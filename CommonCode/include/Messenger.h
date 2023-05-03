@@ -49,7 +49,7 @@ public:
    int           subDir;
    int           process;
    bool          isMC;
-   unsigned long uniqueID;
+   unsigned long long uniqueID;
    float         Energy;
    int           bFlag;
    float         particleWeight;
@@ -251,4 +251,5 @@ public:
    bool Initialize();
    bool GetEntry(int iEntry);
    int GetEntries();
+   bool PassBaselineCut();
 };

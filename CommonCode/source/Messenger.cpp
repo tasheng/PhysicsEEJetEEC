@@ -14,7 +14,8 @@ JetTreeMessenger::JetTreeMessenger()
 
 JetTreeMessenger::JetTreeMessenger(TFile &file, std::string name)
 {
-   JetTreeMessenger(&file, name);
+   TTree *tree = (TTree *)file.Get(name.c_str());
+   Initialize(tree);
 }
 
 JetTreeMessenger::JetTreeMessenger(TFile *file, std::string name)
@@ -88,7 +89,8 @@ ParticleTreeMessenger::ParticleTreeMessenger()
 
 ParticleTreeMessenger::ParticleTreeMessenger(TFile &file, std::string name)
 {
-   ParticleTreeMessenger(&file, name);
+   TTree *tree = (TTree *)file.Get(name.c_str());
+   Initialize(tree);
 }
 
 ParticleTreeMessenger::ParticleTreeMessenger(TFile *file, std::string name)
@@ -540,6 +542,19 @@ int ParticleTreeMessenger::GetEntries()
    return Tree->GetEntries();
 }
 
+bool ParticleTreeMessenger::PassBaselineCut()
+{
+   if(passesAll == false)
+      return false;
+
+   double SumP = 0;
+   for(int i = 0; i < nParticle; i++)
+      SumP = SumP + pmag[i];
+   if(SumP > 200)
+      return false;
+
+   return true;
+}
 
 
 
