@@ -4,6 +4,8 @@
 #include "TTree.h"
 #include "TFile.h"
 
+#include "TauHelperFunctions3.h"
+
 #define MAXJET 1000
 #define MAXPW 6
 #define MAXPARTICLE 1000
@@ -28,6 +30,8 @@ public:
    float  zgJtEta_Beta0p00ZCut0p10[MAXJET];
    float  zg_Beta0p00ZCut0p10[MAXJET];
    float  rg_Beta0p00ZCut0p10[MAXJET];
+public:
+   std::vector<FourVector> Jet;
 public:
    JetTreeMessenger();
    JetTreeMessenger(TFile &file, std::string name);
@@ -242,6 +246,8 @@ public:
    float         rap_wrtThrWithRecoAndMissP[MAXPARTICLE];
    float         theta_wrtThrWithRecoAndMissP[MAXPARTICLE];
    float         phi_wrtThrWithRecoAndMissP[MAXPARTICLE];
+public:
+   std::vector<FourVector> P;
 public:
    ParticleTreeMessenger();
    ParticleTreeMessenger(TFile &file, std::string name);

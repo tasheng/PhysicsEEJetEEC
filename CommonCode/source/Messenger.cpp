@@ -64,6 +64,8 @@ bool JetTreeMessenger::Initialize()
 
 bool JetTreeMessenger::GetEntry(int iEntry)
 {
+   Jet.clear();
+
    if(Tree == nullptr)
       return false;
    if(iEntry < 0)
@@ -72,6 +74,11 @@ bool JetTreeMessenger::GetEntry(int iEntry)
       return false;
 
    Tree->GetEntry(iEntry);
+
+   Jet.resize(nref);
+   for(int i = 0; i < nref; i++)
+      Jet[i].SetPtEtaPhiMass(jtpt[i], jteta[i], jtphi[i], jtm[i]);
+
    return true;
 }
 
@@ -524,6 +531,8 @@ bool ParticleTreeMessenger::Initialize()
 
 bool ParticleTreeMessenger::GetEntry(int iEntry)
 {
+   P.clear();
+
    if(Tree == nullptr)
       return false;
    if(iEntry < 0)
@@ -532,6 +541,11 @@ bool ParticleTreeMessenger::GetEntry(int iEntry)
       return false;
 
    Tree->GetEntry(iEntry);
+
+   P.resize(nParticle);
+   for(int i = 0; i < nParticle; i++)
+      P[i].SetPtEtaPhiMass(pt[i], eta[i], phi[i], mass[i]);
+
    return true;
 }
 
