@@ -10,8 +10,17 @@ Prepare:
 
 TestRun: Execute
 	./Execute --Input $(ProjectBase)/Samples/ALEPHMC/LEP1MC1994_recons_aftercut-014.root \
-		--Jet akR4ESchemeJetTree --JetR 0.4 \
-		--JEC $(DataJEC)
+		--Output PlotReco.root \
+		--Particle t --IsReco true \
+		--Jet akR4ESchemeJetTree --JetR 0.4 --JEC $(MCJEC)
+	./Execute --Input $(ProjectBase)/Samples/ALEPHMC/LEP1MC1994_recons_aftercut-014.root \
+		--Output PlotGen.root \
+		--Particle tgen --IsReco false \
+		--Jet akR4ESchemeGenJetTree --JetR 0.4 --JEC ""
+	./Execute --Input $(ProjectBase)/Samples/ALEPH/LEP1Data1994P2_recons_aftercut-MERGED.root \
+		--Output PlotData.root \
+		--Particle t --IsReco true \
+		--Jet akR4ESchemeJetTree --JetR 0.4 --JEC $(DataJEC)
 
 Execute: FirstExploration.cpp
 	g++ FirstExploration.cpp -o Execute \
