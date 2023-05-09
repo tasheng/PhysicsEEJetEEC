@@ -13,7 +13,7 @@ using namespace std;
 
 int main(int argc, char *argv[]);
 void DivideByBin(TH1D &H);
-double GetMin(vector<double> X);
+double GetMax(vector<double> X);
 
 int main(int argc, char *argv[])
 {
@@ -122,23 +122,23 @@ int main(int argc, char *argv[])
          {
             for(int i2 = i1 + 1; i2 < N; i2++)
             {
-               double Min2 = D[i1][i2];
-               HEEC2.Fill(Min2, P[i1][0] * P[i2][0] * W[i1] * W[i2]);
+               double Max2 = D[i1][i2];
+               HEEC2.Fill(Max2, P[i1][0] * P[i2][0] / MJet.Jet[iJ][0] / MJet.Jet[iJ][0]);
 
                for(int i3 = i2 + 1; i3 < N; i3++)
                {
-                  double Min3 = GetMin({Min2, D[i1][i3], D[i2][i3]});
-                  HEEC3.Fill(Min3, P[i1][0] * P[i2][0] * P[i3][0] * W[i1] * W[i2] * W[i3]);
+                  double Max3 = GetMax({Max2, D[i1][i3], D[i2][i3]});
+                  HEEC3.Fill(Max3, P[i1][0] * P[i2][0] * P[i3][0] / MJet.Jet[iJ][0] / MJet.Jet[iJ][0] / MJet.Jet[iJ][0]);
                
                   for(int i4 = i3 + 1; i4 < N; i4++)
                   {
-                     double Min4 = GetMin({Min3, D[i1][i4], D[i2][i4], D[i3][i4]});
-                     HEEC4.Fill(Min4, P[i1][0] * P[i2][0] * P[i3][0] * P[i4][0] * W[i1] * W[i2] * W[i3] * W[i4]);
+                     double Max4 = GetMax({Max3, D[i1][i4], D[i2][i4], D[i3][i4]});
+                     HEEC4.Fill(Max4, P[i1][0] * P[i2][0] * P[i3][0] * P[i4][0] / MJet.Jet[iJ][0] / MJet.Jet[iJ][0] / MJet.Jet[iJ][0] / MJet.Jet[iJ][0]);
                   
                      for(int i5 = i4 + 1; i5 < N; i5++)
                      {
-                        double Min5 = GetMin({Min4, D[i1][i5], D[i2][i5], D[i3][i5], D[i4][i5]});
-                        HEEC5.Fill(Min5, P[i1][0] * P[i2][0] * P[i3][0] * P[i4][0] * P[i5][0] * W[i1] * W[i2] * W[i3] * W[i4] * W[i5]);
+                        double Max5 = GetMax({Max4, D[i1][i5], D[i2][i5], D[i3][i5], D[i4][i5]});
+                        HEEC5.Fill(Max5, P[i1][0] * P[i2][0] * P[i3][0] * P[i4][0] * P[i5][0] / MJet.Jet[iJ][0] / MJet.Jet[iJ][0] / MJet.Jet[iJ][0] / MJet.Jet[iJ][0] / MJet.Jet[iJ][0]);
                      }
                   }
                }
@@ -183,7 +183,7 @@ void DivideByBin(TH1D &H)
    }
 }
 
-double GetMin(vector<double> X)
+double GetMax(vector<double> X)
 {
    if(X.size() == 0)
       return -1;
