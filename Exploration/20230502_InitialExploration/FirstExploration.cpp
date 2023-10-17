@@ -190,7 +190,7 @@ double GetMax(vector<double> X)
 
    double Result = X[0];
    for(int i = 1; i < X.size(); i++)
-      if(Result > X[i])
+      if(Result < X[i])
          Result = X[i];
    return Result;
 }
