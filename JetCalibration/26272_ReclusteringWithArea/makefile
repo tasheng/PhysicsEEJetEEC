@@ -12,8 +12,8 @@ Execute: JetCluster.cpp
 		`$(FASTJET_BASE)/bin/fastjet-config --libs --cxxflags` \
 		-I$(ProjectBase)/CommonCode/include $(ProjectBase)/CommonCode/library/*.o
 
-RunAll: Execute
-	bash RunAll.sh
+RunMC: Execute
+	bash RunMC.sh
 
 RunData: Execute
 	bash RunData.sh

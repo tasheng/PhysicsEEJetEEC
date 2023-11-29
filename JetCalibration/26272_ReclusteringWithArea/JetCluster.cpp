@@ -6,7 +6,6 @@ using namespace std;
 #include "TTree.h"
 
 #include "fastjet/ClusterSequence.hh"
-#include "fastjet/ClusterSequenceArea.hh"
 using namespace fastjet;
 
 #include "TauHelperFunctions3.h"
@@ -17,8 +16,11 @@ using namespace fastjet;
 
 #define MAXR 20
 #define MAX 1000
+#define TOTALGHOST 1e-8
 
 int main(int argc, char *argv[]);
+void AddGhosts(vector<PseudoJet> &P, int GhostSpacing);
+double GetArea(PseudoJet &J);
 
 int main(int argc, char *argv[])
 {
@@ -30,8 +32,9 @@ int main(int argc, char *argv[])
    string ParticleTreeName          = CL.Get("Reco", "t");
    string GenParticleTreeName       = CL.Get("Gen", "tgen");
    string GenBeforeParticleTreeName = CL.Get("GenBefore", "tgenBefore");
-   bool SkipNeutrino                = CL.GetBool("SkipNeutrino", false);
    bool SkipGen                     = CL.GetBool("SkipGen", false);
+
+   int GhostSpacing                 = CL.GetInt("GhostSpacing", 50);
 
    TFile InputFile(InputFileName.c_str());
 
@@ -119,6 +122,7 @@ int main(int argc, char *argv[])
 
          RecoFastJetParticles.push_back(PseudoJet(P[1], P[2], P[3], P[0]));
       }
+      AddGhosts(RecoFastJetParticles, GhostSpacing);
       if(SkipGen == false)
       {
          for(int iP = 0; iP < MGen.nParticle; iP++)
@@ -126,49 +130,31 @@ int main(int argc, char *argv[])
             FourVector P(0, MGen.px[iP], MGen.py[iP], MGen.pz[iP]);
             P[0] = sqrt(P.GetP2() + MGen.mass[iP] * MGen.mass[iP]);
 
-            if(SkipNeutrino == true)
-            {
-               if(MGen.pid[iP] == 12 || MGen.pid[iP] == -12)   continue;
-               if(MGen.pid[iP] == 14 || MGen.pid[iP] == -14)   continue;
-               if(MGen.pid[iP] == 16 || MGen.pid[iP] == -16)   continue;
-            }
-
             GenFastJetParticles.push_back(PseudoJet(P[1], P[2], P[3], P[0]));
          }
+         AddGhosts(GenFastJetParticles, GhostSpacing);
          for(int iP = 0; iP < MGenBefore.nParticle; iP++)
          {
             FourVector P(0, MGenBefore.px[iP], MGenBefore.py[iP], MGenBefore.pz[iP]);
             P[0] = sqrt(P.GetP2() + MGenBefore.mass[iP] * MGenBefore.mass[iP]);
 
-            if(SkipNeutrino == true)
-            {
-               if(MGenBefore.pid[iP] == 12 || MGenBefore.pid[iP] == -12)   continue;
-               if(MGenBefore.pid[iP] == 14 || MGenBefore.pid[iP] == -14)   continue;
-               if(MGenBefore.pid[iP] == 16 || MGenBefore.pid[iP] == -16)   continue;
-            }
-
             GenBeforeFastJetParticles.push_back(PseudoJet(P[1], P[2], P[3], P[0]));
          }
+         AddGhosts(GenBeforeFastJetParticles, GhostSpacing);
       }
 
       // Now do all the clustering
       for(int iR = 0; iR < (int)JetR.size(); iR++)
       {
          JetDefinition RecoDefinition(ee_genkt_algorithm, JetR[iR], -1, RecombinationScheme(E_scheme));
-         // AreaDefinition RecoAreaDefinition(AreaType(active_area), GhostedAreaSpec(5, 3, 0.01));
-         // ClusterSequenceArea RecoSequence(RecoFastJetParticles, RecoDefinition, RecoAreaDefinition);
          ClusterSequence RecoSequence(RecoFastJetParticles, RecoDefinition);
          vector<PseudoJet> RecoFastJets = sorted_by_pt(RecoSequence.inclusive_jets(0));
 
          JetDefinition GenDefinition(ee_genkt_algorithm, JetR[iR], -1, RecombinationScheme(E_scheme));
-         // AreaDefinition GenAreaDefinition(AreaType(active_area), GhostedAreaSpec(5, 3, 0.01));
-         // ClusterSequenceArea GenSequence(GenFastJetParticles, GenDefinition, GenAreaDefinition);
          ClusterSequence GenSequence(GenFastJetParticles, GenDefinition);
          vector<PseudoJet> GenFastJets = sorted_by_pt(GenSequence.inclusive_jets(0));
 
          JetDefinition GenBeforeDefinition(ee_genkt_algorithm, JetR[iR], -1, RecombinationScheme(E_scheme));
-         // AreaDefinition GenBeforeAreaDefinition(AreaType(active_area), GhostedAreaSpec(5, 3, 0.01));
-         // ClusterSequenceArea GenBeforeSequence(GenBeforeFastJetParticles, GenBeforeDefinition, GenBeforeAreaDefinition);
          ClusterSequence GenBeforeSequence(GenBeforeFastJetParticles, GenBeforeDefinition);
          vector<PseudoJet> GenBeforeFastJets = sorted_by_pt(GenBeforeSequence.inclusive_jets(0));
 
@@ -180,7 +166,7 @@ int main(int argc, char *argv[])
             RecoJetPhi[iR][iJ] = RecoFastJets[iJ].phi();
             RecoJetM[iR][iJ] = RecoFastJets[iJ].m();
             RecoJetN[iR][iJ] = RecoFastJets[iJ].constituents().size();
-            RecoJetA[iR][iJ] = RecoFastJets[iJ].has_area() ? RecoFastJets[iJ].area() : -1;
+            RecoJetA[iR][iJ] = GetArea(RecoFastJets[iJ]);
          }
 
          if(SkipGen == false)
@@ -193,7 +179,7 @@ int main(int argc, char *argv[])
                GenJetPhi[iR][iJ] = GenFastJets[iJ].phi();
                GenJetM[iR][iJ] = GenFastJets[iJ].m();
                GenJetN[iR][iJ] = GenFastJets[iJ].constituents().size();
-               GenJetA[iR][iJ] = GenFastJets[iJ].has_area() ? GenFastJets[iJ].area() : -1;
+               GenJetA[iR][iJ] = GetArea(GenFastJets[iJ]);
             }
 
             NGenBeforeJet[iR] = GenBeforeFastJets.size();
@@ -204,7 +190,7 @@ int main(int argc, char *argv[])
                GenBeforeJetPhi[iR][iJ] = GenBeforeFastJets[iJ].phi();
                GenBeforeJetM[iR][iJ] = GenBeforeFastJets[iJ].m();
                GenBeforeJetN[iR][iJ] = GenBeforeFastJets[iJ].constituents().size();
-               GenBeforeJetA[iR][iJ] = GenBeforeFastJets[iJ].has_area() ? GenBeforeFastJets[iJ].area() : -1;
+               GenBeforeJetA[iR][iJ] = GetArea(GenBeforeFastJets[iJ]);
             }
          }
 
@@ -237,6 +223,49 @@ int main(int argc, char *argv[])
 
    return 0;
 }
+
+void AddGhosts(vector<PseudoJet> &P, int GhostSpacing)
+{
+   double TotalArea = 0;
+
+   for(int i = 0; i < GhostSpacing; i++)
+   {
+      double Theta = M_PI * (i + 0.5) / GhostSpacing;
+
+      int NPhi = (int)(GhostSpacing * sin(Theta)) + 1;
+      for(int j = 0; j < NPhi; j++)
+      {
+         double Phi = 2 * M_PI * (j + 0.5) / NPhi;
+
+         double A = (M_PI / GhostSpacing) * (2 * M_PI * sin(Theta) / NPhi);
+         TotalArea = TotalArea + A;
+
+         FourVector G;
+         G.SetSizeThetaPhi(TOTALGHOST * A, Theta, Phi);
+         P.push_back(PseudoJet(G[1], G[2], G[3], G[0]));
+      }
+   }
+
+   for(int i = 0; i < (int)P.size(); i++)
+   {
+      if(P[i].e() < TOTALGHOST)
+         P[i] = P[i] / TotalArea;
+   }
+}
+
+double GetArea(PseudoJet &J)
+{
+   double TotalGhostE = 0;
+
+   for(PseudoJet &P : J.constituents())
+   {
+      if(P.e() < TOTALGHOST)
+         TotalGhostE = TotalGhostE + P.e();
+   }
+
+   return TotalGhostE / TOTALGHOST * 4 * M_PI;
+}
+
 
 
 

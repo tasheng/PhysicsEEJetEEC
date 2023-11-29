@@ -85,6 +85,8 @@ void PlotEClosure(PdfFileHelper &PdfFile, TTree *Tree,
    TProfile P2("P2", ";Gen E;Response", 50, EMin, EMax);
 
    double Threshold = (R < 0.6) ? 0.2 : 0.37;
+   if(R > 0.9)
+      Threshold = 0.1;
 
    Tree->Draw("RecoE/GenE:GenE>>P1", Form("GenTheta > %f && GenTheta < %f && 1-cos(Angle) < %f", ThetaMin, ThetaMax, Threshold));
    Tree->Draw("CorrectedE/GenE:GenE>>P2", Form("GenTheta > %f && GenTheta < %f && 1-cos(Angle) < %f", ThetaMin, ThetaMax, Threshold));

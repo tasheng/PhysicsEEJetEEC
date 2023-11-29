@@ -50,11 +50,11 @@ ExecuteJEC: JetEnergyCorrection.cpp
 	CompileRootMacro JetEnergyCorrection.cpp ExecuteJEC
 
 RunJEC: ExecuteJEC
-	time ./ExecuteJEC --File Samples/AllMatchedR2.root  --Tree MatchedTree --Output JECR2.txt --Check JECCheckR2.pdf --R 0.2
-	time ./ExecuteJEC --File Samples/AllMatchedR4.root  --Tree MatchedTree --Output JECR4.txt --Check JECCheckR4.pdf --R 0.4
-	time ./ExecuteJEC --File Samples/AllMatchedR6.root  --Tree MatchedTree --Output JECR6.txt --Check JECCheckR6.pdf --R 0.6
-	time ./ExecuteJEC --File Samples/AllMatchedR8.root  --Tree MatchedTree --Output JECR8.txt --Check JECCheckR8.pdf --R 0.8
-	time ./ExecuteJEC --File Samples/AllMatchedR10.root --Tree MatchedTree --Output JECR10.txt --Check JECCheckR10.pdf --R 1.0
+	# time ./ExecuteJEC --File Samples/AllMatchedR2.root  --Tree MatchedTree --Output JECR2.txt --Check JECCheckR2.pdf --R 0.2
+	# time ./ExecuteJEC --File Samples/AllMatchedR4.root  --Tree MatchedTree --Output JECR4.txt --Check JECCheckR4.pdf --R 0.4
+	# time ./ExecuteJEC --File Samples/AllMatchedR6.root  --Tree MatchedTree --Output JECR6.txt --Check JECCheckR6.pdf --R 0.6
+	# time ./ExecuteJEC --File Samples/AllMatchedR8.root  --Tree MatchedTree --Output JECR8.txt --Check JECCheckR8.pdf --R 0.8
+	time ./ExecuteJEC --File Samples/AllMatchedR10.root --Tree MatchedTree --Output JECR10.txt --Check JECCheckR10.pdf --R 1.0 --Function 6
 	# cp JECCheck*.pdf ~/WindowsHome/Downloads
 
 ExecuteJECClosure: JetEnergyClosure.cpp

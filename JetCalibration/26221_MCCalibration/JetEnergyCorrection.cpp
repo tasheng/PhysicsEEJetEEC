@@ -18,7 +18,7 @@ using namespace std;
 #include "SetStyle.h"
 
 int main(int argc, char *argv[]);
-vector<double> JECFit(PdfFileHelper &PdfFile, TTree *Tree, double ThetaMin, double ThetaMax, double R);
+vector<double> JECFit(PdfFileHelper &PdfFile, TTree *Tree, double ThetaMin, double ThetaMax, double R, int Function);
 
 int main(int argc, char *argv[])
 {
@@ -31,6 +31,7 @@ int main(int argc, char *argv[])
    string OutputFileName       = CL.Get("Output", "JEC.txt");
    string QualityCheckFileName = CL.Get("Check", "JECCheck.pdf");
    double R                    = CL.GetDouble("R", 0.4);
+   int Function                = CL.GetInteger("Function", 3);
 
    PdfFileHelper PdfFile(QualityCheckFileName);
    PdfFile.AddTextPage("JEC Quality Check");
@@ -44,7 +45,11 @@ int main(int argc, char *argv[])
    int ThetaBinCount = 18;
    double ThetaBins[] = {0, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 1.0};
 
-   string Formula = "1/([0]+[1]*x+[2]*x*x+[3]*x*x*x)";
+   string Formula = "1";
+   if(Function == 3)
+      Formula = "1/([0]+[1]*x+[2]*x*x+[3]*x*x*x)";
+   if(Function == 6)
+      Formula = "1/((x<45)*([0]+[1]*(x-45)+[2]*(x-45)*(x-45)+[3]*(x-45)*(x-45)*(x-45))+(x>=45)*([0]+[4]*(x-45)))";
 
    ofstream out(OutputFileName);
 
@@ -52,7 +57,7 @@ int main(int argc, char *argv[])
 
    for(int i = 0; i < ThetaBinCount; i++)
    {
-      vector<double> Result = JECFit(PdfFile, Tree, ThetaBins[i], ThetaBins[i+1], R);
+      vector<double> Result = JECFit(PdfFile, Tree, ThetaBins[i], ThetaBins[i+1], R, Function);
 
       out << ThetaBins[i] * M_PI << " " << ThetaBins[i+1] * M_PI;
       out << " " << Result.size();
@@ -71,7 +76,7 @@ int main(int argc, char *argv[])
    return 0;
 }
 
-vector<double> JECFit(PdfFileHelper &PdfFile, TTree *Tree, double ThetaMin, double ThetaMax, double R)
+vector<double> JECFit(PdfFileHelper &PdfFile, TTree *Tree, double ThetaMin, double ThetaMax, double R, int Function)
 {
    PdfFile.AddTextPage(Form("Theta = %.2f#pi ~ %.2f#pi", ThetaMin, ThetaMax));
 
@@ -91,6 +96,8 @@ vector<double> JECFit(PdfFileHelper &PdfFile, TTree *Tree, double ThetaMin, doub
    
    double Threshold = 0.08;
    if(fabs(R - 0.8) < 1e-5)
+      Threshold = 0.10;
+   if(fabs(R - 1.0) < 1e-5)
       Threshold = 0.10;
 
    int EntryCount = Tree->GetEntries();
@@ -206,10 +213,16 @@ vector<double> JECFit(PdfFileHelper &PdfFile, TTree *Tree, double ThetaMin, doub
 
    Result.push_back(MinE);
    Result.push_back(MaxE);
-   Result.push_back(F3.GetParameter(0));
-   Result.push_back(F3.GetParameter(1));
-   Result.push_back(F3.GetParameter(2));
-   Result.push_back(F3.GetParameter(3));
+   if(Function == 3)
+   {
+      for(int i = 0; i < 4; i++)
+         Result.push_back(F3.GetParameter(i));
+   }
+   if(Function == 6)
+   {
+      for(int i = 0; i < 5; i++)
+         Result.push_back(F6.GetParameter(i));
+   }
 
    return Result;
 }
