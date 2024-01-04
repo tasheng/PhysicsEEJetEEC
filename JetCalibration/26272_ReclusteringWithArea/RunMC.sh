@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for i in Samples/ALEPHMC/*
+for i in Samples/ALEPHMC/*root
 do
    echo "Processing file $i..."
 

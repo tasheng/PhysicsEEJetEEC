@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for i in Samples/ALEPH/*199[235]*
+for i in Samples/ALEPH/*1994*
 do
    echo "Processing file $i..."
 
