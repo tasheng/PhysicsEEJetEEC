@@ -16,7 +16,7 @@ std::map<int, int> MatchJetsBruteForce(double (*Metric)(O,o), std::vector<O> Gen
 template <class O, class o>
 std::map<int, int> MatchJetsHungarian(double (*Metric)(O,o), std::vector<O> GenJets, std::vector<o> RecoJets);
 bool DoHungarianAssignment(int N, double Cost[HungarianMAX][HungarianMAX], int Assignment[HungarianMAX]);
-void DoHungarianSubtraction(int N, double Cost[HungarianMAX][HungarianMAX], int Assignment[HungarianMAX]);
+bool DoHungarianSubtraction(int N, double Cost[HungarianMAX][HungarianMAX], int Assignment[HungarianMAX]);
 template <class O>
 void PrintVector(int N, O V[HungarianMAX]);
 template <class O>
@@ -151,7 +151,8 @@ std::map<int, int> MatchJetsHungarian(double (*Metric)(O,o), std::vector<O> Jets
    int Assignment[HungarianMAX] = {-1};
  
    bool Done = false;
-   while(Done == false)
+   bool SubtractionSuccess = true;
+   while(Done == false && SubtractionSuccess == true)
    {
       // Step 2 - attempt assignment
       Done = DoHungarianAssignment(N, Cost, Assignment);
@@ -159,10 +160,13 @@ std::map<int, int> MatchJetsHungarian(double (*Metric)(O,o), std::vector<O> Jets
          break;
 
       // Step 3 - do the ticking and subtracting on the matrix
-      DoHungarianSubtraction(N, Cost, Assignment);
+      SubtractionSuccess = DoHungarianSubtraction(N, Cost, Assignment);
    }
 
    std::map<int, int> GenReco;
+
+   if(SubtractionSuccess == false)
+      return GenReco;
 
    for(int iA = 0; iA < NA; iA++)
    {
@@ -286,7 +290,7 @@ bool DoHungarianAssignment(int N, double Cost[HungarianMAX][HungarianMAX], int A
    return FullyAssigned;
 }
 
-void DoHungarianSubtraction(int N, double Cost[HungarianMAX][HungarianMAX], int AssignmentA[HungarianMAX])
+bool DoHungarianSubtraction(int N, double Cost[HungarianMAX][HungarianMAX], int AssignmentA[HungarianMAX])
 {
    bool TickedA[HungarianMAX] = {false};
    bool TickedB[HungarianMAX] = {false};
@@ -350,8 +354,8 @@ void DoHungarianSubtraction(int N, double Cost[HungarianMAX][HungarianMAX], int 
 
    if(Theta < 0)
    {
-      std::cerr << "No need for subtraction - we can do full assignment" << std::endl;
-      return;
+      // std::cerr << "No need for subtraction - we can do full assignment" << std::endl;
+      return false;
    }
 
    // Do the subtraction
@@ -365,6 +369,8 @@ void DoHungarianSubtraction(int N, double Cost[HungarianMAX][HungarianMAX], int 
             Cost[iA][iB] = Cost[iA][iB] + Theta;
       }
    }
+
+   return true;
 }
 
 template <class O>
