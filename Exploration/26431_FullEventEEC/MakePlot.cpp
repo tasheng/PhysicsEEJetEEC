@@ -22,9 +22,9 @@ int main(int argc, char *argv[])
 {
    SetThesisStyle();
 
-   string GenFile = "PlotGen.root";
-   string RecoFile = "PlotReco.root";
-   string DataFile = "PlotData.root";
+   string GenFile = "PlotGen_01.root";
+   string RecoFile = "PlotReco_01.root";
+   string DataFile = "PlotPythia8.root";
    
    MakePlot(GenFile, RecoFile, DataFile, "HEEC2", "EEC2.pdf",
       "R_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}/E^{2})}{d R_{L}}", 1e-3, 10);
@@ -136,7 +136,7 @@ void MakePlot2(string GenFile, string RecoFile, string DataFile, string Histogra
    H22->Divide(H21);
    H32->Divide(H31);
 
-   MakeCanvas(H12, H22, H32, HMin, HMax, Output, "R_{L}", "", WorldMin, WorldMax);
+   MakeCanvas(H12, H22, H32, HMin, HMax, Output, "R_{L}", Histogram2 + "/" + Histogram1, WorldMin, WorldMax);
 
    F3.Close();
    F2.Close();
@@ -176,9 +176,12 @@ void MakeCanvas(TH1D *H1, TH1D *H2, TH1D *H3, TH1D *HMin, TH1D *HMax, string Out
    H2->Draw("same");
    H3->Draw("same");
 
-   double BinMin = HMin->GetBinContent(1) / 1;
+   // double BinMin = HMin->GetBinContent(1) / 1;
+   // double BinMiddle = M_PI / 2;
+   // double BinMax = HMax->GetBinContent(N) / 1;
+   double BinMin = 0.002;
    double BinMiddle = M_PI / 2;
-   double BinMax = HMax->GetBinContent(N) / 1;
+   double BinMax = M_PI - 0.002;
 
    TGaxis X1(0, WorldMin, N / 2, WorldMin, BinMin, BinMiddle, 510, "G");
    TGaxis X2(N, WorldMin, N / 2, WorldMin, BinMin, BinMiddle, 510, "-G");
@@ -221,7 +224,7 @@ void MakeCanvas(TH1D *H1, TH1D *H2, TH1D *H3, TH1D *HMin, TH1D *HMax, string Out
    Legend.SetBorderSize(0);
    Legend.AddEntry(H1, "GEN", "pl");
    Legend.AddEntry(H2, "RECO", "pl");
-   Legend.AddEntry(H3, "Data", "pl");
+   Legend.AddEntry(H3, "Pythia8", "pl");
    Legend.Draw();
 
    Canvas.SaveAs(Output.c_str());

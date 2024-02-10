@@ -14,6 +14,11 @@ TestRun: Execute
 		--Output TestData.root \
 		--Particle t --IsReco true
 
+RunPythia8: Execute
+	./Execute --Input $(ProjectBase)/Samples/PYTHIA8/20240206_Pilot_Hannah/LEP1_pythia8_MC.root \
+		--Output PlotPythia8.root \
+		--Particle tgen --IsReco false --DoEENormalize true --DoWeight false
+
 RunAll: Execute
 	bash RunAll.sh
 

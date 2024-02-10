@@ -10,6 +10,7 @@ using namespace std;
 #include "CommandLine.h"
 #include "Messenger.h"
 #include "JetCorrector.h"
+#include "alephTrkEfficiency.h"
 
 int main(int argc, char *argv[]);
 void DivideByBin(TH1D &H, double Bins[]);
@@ -25,11 +26,14 @@ int main(int argc, char *argv[])
    string InputFileName    = CL.Get("Input");
    string OutputFileName   = CL.Get("Output", "Plots.root");
    string ParticleTreeName = CL.Get("Particle", "t");
-   double MinParticleE     = CL.GetDouble("MinParticleE", 0.5);
+   double MinParticleE     = CL.GetDouble("MinParticleE", 0);
+   double MinParticlePT    = CL.GetDouble("MinParticlePT", 0.2);
+   double MinTheta         = CL.GetDouble("MinTheta", 0.35);   // cos(0.35) = 0.94
    bool IsReco             = CL.GetBool("IsReco", true);
    bool ChargedOnly        = CL.GetBool("ChargedOnly", true);
    bool DoEENormalize      = CL.GetBool("EENormalize", true);
    bool UseFullEnergy      = CL.GetBool("UseFullEnergy", true);
+   bool DoWeight           = CL.GetBool("DoWeight", false);
 
    TFile OutputFile(OutputFileName.c_str(), "RECREATE");
 
@@ -68,6 +72,8 @@ int main(int argc, char *argv[])
 
    ParticleTreeMessenger MParticle(File, ParticleTreeName.c_str());
 
+   alephTrkEfficiency efficiencyCorrector;
+
    int EntryCount = MParticle.GetEntries();
    ProgressBar Bar(cout, EntryCount);
    for(int iE = 0; iE < EntryCount; iE++)
@@ -93,10 +99,26 @@ int main(int argc, char *argv[])
       {
          if(MParticle.P[iP][0] < MinParticleE)
             continue;
-         if(ChargedOnly == true && MParticle.charge[iP] == 0)
+         if(MParticle.P[iP].GetPT() < MinParticlePT)
             continue;
-         P.push_back(MParticle.P[iP]);
-         W.push_back(MParticle.weight[iP]);
+         if(ChargedOnly == true && (MParticle.charge[iP] == 0 && MParticle.isCharged[iP] == 0))
+            continue;
+         if(MParticle.P[iP].GetTheta() < MinTheta || MParticle.P[iP].GetTheta() > M_PI - MinTheta)
+            continue;
+
+         FourVector &Momentum = MParticle.P[iP];
+         P.push_back(Momentum);
+         
+         if(DoWeight == true)
+         {
+            double Efficiency = efficiencyCorrector.efficiency(Momentum.GetTheta(), Momentum.GetPhi(), Momentum.GetPT(), MParticle.nChargedHadronsHP);
+            W.push_back((Efficiency > 0) ? (1 / Efficiency) : 0);
+         }
+         else
+            W.push_back(1);
+         
+         // W.push_back(MParticle.weight[iP]);
+         
          TotalE = TotalE + MParticle.P[iP][0];
       }
 
@@ -107,7 +129,7 @@ int main(int argc, char *argv[])
       double TotalE3 = DoEENormalize ? (TotalE2 * TotalE) : 1;
       double TotalE4 = DoEENormalize ? (TotalE3 * TotalE) : 1;
       double TotalE5 = DoEENormalize ? (TotalE4 * TotalE) : 1;
-
+   
       // Fill EECs
       int N = P.size();
       vector<vector<double>> D(N);
@@ -124,26 +146,26 @@ int main(int argc, char *argv[])
          {
             double Max2 = D[i1][i2];
             int Bin2 = FindBin(Max2, BinCount * 2, Bins);
-            HEEC2.Fill(Bin2, P[i1][0] * P[i2][0] / TotalE2);
+            HEEC2.Fill(Bin2, P[i1][0] * P[i2][0] / TotalE2 * W[i1] * W[i2]);
 
             for(int i3 = i2 + 1; i3 < N; i3++)
             {
                double Max3 = GetMax({Max2, D[i1][i3], D[i2][i3]});
                int Bin3 = FindBin(Max3, BinCount * 2, Bins);
-               HEEC3.Fill(Bin3, P[i1][0] * P[i2][0] * P[i3][0] / TotalE3);
+               HEEC3.Fill(Bin3, P[i1][0] * P[i2][0] * P[i3][0] / TotalE3 * W[i1] * W[i2] * W[i3]);
            
                for(int i4 = i3 + 1; i4 < N; i4++)
                {
                   double Max4 = GetMax({Max3, D[i1][i4], D[i2][i4], D[i3][i4]});
                   int Bin4 = FindBin(Max4, BinCount * 2, Bins);
-                  HEEC4.Fill(Bin4, P[i1][0] * P[i2][0] * P[i3][0] * P[i4][0] / TotalE4);
-               
+                  HEEC4.Fill(Bin4, P[i1][0] * P[i2][0] * P[i3][0] * P[i4][0] / TotalE4 * W[i1] * W[i2] * W[i3] * W[i4]);
+
                   /*
                   for(int i5 = i4 + 1; i5 < N; i5++)
                   {
                      double Max5 = GetMax({Max4, D[i1][i5], D[i2][i5], D[i3][i5], D[i4][i5]});
                      int Bin5 = FindBin(Max5, BinCount * 2, Bins);
-                     HEEC5.Fill(Bin5, P[i1][0] * P[i2][0] * P[i3][0] * P[i4][0] * P[i5][0] / TotalE5);
+                     HEEC5.Fill(Bin5, P[i1][0] * P[i2][0] * P[i3][0] * P[i4][0] * P[i5][0] / TotalE5 * W[i1] * W[i2] * W[i3] * W[i4] * W[i5]);
                   }
                   */
                }
