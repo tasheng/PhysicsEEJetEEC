@@ -34,4 +34,4 @@ Execute: FirstExploration.cpp
 ExecutePlot: MakePlot.cpp
 	g++ MakePlot.cpp -o ExecutePlot \
 		-I$(ProjectBase)/CommonCode/include \
-		`root-config --libs --cflags`
+		`root-config --libs --cflags` -g

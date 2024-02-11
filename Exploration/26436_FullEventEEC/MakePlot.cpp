@@ -6,146 +6,125 @@ using namespace std;
 #include "TH1D.h"
 #include "TLegend.h"
 #include "TGaxis.h"
+#include "TPad.h"
 
 #include "SetStyle.h"
 #include "PlotHelper4.h"
 
 int main(int argc, char *argv[]);
-void MakePlot(string GenFile, string RecoFile, string DataFile, string Histogram, string Output,
+void MakePlot(vector<string> FileNames, vector<string> Labels, string Histogram, string Output,
    string X = "", string Y = "", double WorldMin = 1e-3, double WorldMax = 1);
-void MakePlot2(string GenFile, string RecoFile, string DataFile, string Histogram1, string Histogram2,
-   string Output, double WorldMin = 1e-3, double WorldMax = 1);
-void MakeCanvas(TH1D *H1, TH1D *H2, TH1D *H3, TH1D *HMin, TH1D *HMax, string Output, string X = "", string Y = "", double WorldMin = 1e-3, double WorldMax = 1);
+void MakePlot2(vector<string> FileNames, vector<string> Labels, string Histogram1, string Histogram2,
+   string Output, string X = "", string Y = "", double WorldMin = 1e-3, double WorldMax = 1);
+void MakeCanvasOld(vector<TH1D *> Histograms, vector<string> Labels, string Output,
+   string X = "", string Y = "", double WorldMin = 1e-3, double WorldMax = 1);
+void MakeCanvas(vector<TH1D *> Histograms, vector<string> Labels, string Output,
+   string X = "", string Y = "", double WorldMin = 1e-3, double WorldMax = 1);
 double GetMin(TH1D *H);
+void SetPad(TPad &P);
 
 int main(int argc, char *argv[])
 {
    SetThesisStyle();
 
-   string GenFile = "PlotGen_01.root";
-   string RecoFile = "PlotReco_01.root";
-   string DataFile = "PlotPythia8.root";
+   vector<string> FileNames{"PlotGen.root", "PlotReco.root", "PlotPythia8.root"};
+   vector<string> Labels{"GEN Archived MC", "RECO Archived MC", "Pythia8"};
    
-   MakePlot(GenFile, RecoFile, DataFile, "HEEC2", "EEC2.pdf",
-      "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}/E^{2})}{d #theta_{L}}", 1e-3, 10);
-   MakePlot(GenFile, RecoFile, DataFile, "HEEC3", "EEC3.pdf",
-      "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}E_{k}/E^{3})}{d #theta_{L}}", 1e-6, 10);
-   MakePlot(GenFile, RecoFile, DataFile, "HEEC4", "EEC4.pdf",
-      "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}E_{k}E_{l}/E^{4})}{d #theta_{L}}", 1e-8, 10);
+   MakePlot(FileNames, Labels, "HEEC2", "EEC2.pdf",
+      "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}/E^{2})}{d #theta_{L}}", 2e-3, 10);
+   MakePlot(FileNames, Labels, "HEEC3", "EEC3.pdf",
+      "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}E_{k}/E^{3})}{d #theta_{L}}", 2e-6, 10);
+   MakePlot(FileNames, Labels, "HEEC4", "EEC4.pdf",
+      "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}E_{k}E_{l}/E^{4})}{d #theta_{L}}", 2e-8, 10);
    
-   MakePlot2(GenFile, RecoFile, DataFile, "HEEC2", "HEEC3", "EEC3EEC2.pdf", 1e-4, 10);
-   MakePlot2(GenFile, RecoFile, DataFile, "HEEC2", "HEEC4", "EEC4EEC2.pdf", 1e-6, 10);
+   MakePlot2(FileNames, Labels, "HEEC2", "HEEC3", "EEC3EEC2.pdf", "#theta_{L}", "Ratio E3C/E2C", 2e-4, 10);
+   MakePlot2(FileNames, Labels, "HEEC2", "HEEC4", "EEC4EEC2.pdf", "#theta_{L}", "Ratio E4C/E2C", 2e-6, 10);
 
    return 0;
 }
 
-void MakePlot(string GenFile, string RecoFile, string DataFile, string Histogram, string Output, string X, string Y, double WorldMin, double WorldMax)
+void MakePlot(vector<string> FileNames, vector<string> Labels, string Histogram, string Output,
+   string X, string Y, double WorldMin, double WorldMax)
 {
-   TFile F1(GenFile.c_str());
-   TFile F2(RecoFile.c_str());
-   TFile F3(DataFile.c_str());
+   static vector<int> Colors = GetCVDColors6();
 
-   TH1D *N1 = (TH1D *)F1.Get("HN");
-   TH1D *N2 = (TH1D *)F2.Get("HN");
-   TH1D *N3 = (TH1D *)F3.Get("HN");
+   int N = FileNames.size();
 
-   TH1D *H1 = (TH1D *)F1.Get(Histogram.c_str());
-   TH1D *H2 = (TH1D *)F2.Get(Histogram.c_str());
-   TH1D *H3 = (TH1D *)F3.Get(Histogram.c_str());
-   
-   TH1D *HMin = (TH1D *)F1.Get("HBinMin");
-   TH1D *HMax = (TH1D *)F1.Get("HBinMax");
+   vector<TFile *> Files(N);
+   for(int i = 0; i < N; i++)
+      Files[i] = new TFile(FileNames[i].c_str());
 
-   H1->Scale(1 / N1->GetBinContent(1));
-   H2->Scale(1 / N2->GetBinContent(1));
-   H3->Scale(1 / N3->GetBinContent(1));
+   vector<TH1D *> Histograms(N);
+   for(int i = 0; i < N; i++)
+   {
+      TH1D *HN = (TH1D *)Files[i]->Get("HN");
+      TH1D *H = (TH1D *)Files[i]->Get(Histogram.c_str());
+      H->Scale(1 / HN->GetBinContent(1));
+      H->SetMarkerColor(Colors[i]);
+      H->SetMarkerStyle(20);
+      H->SetLineColor(Colors[i]);
+      H->SetLineWidth(2);
+      Histograms[i] = H;
+   }
 
-   H1->SetMarkerColor(kGreen + 3);
-   H1->SetMarkerStyle(20);
-   H1->SetLineColor(kGreen + 3);
-   H1->SetLineWidth(2);
-   H2->SetMarkerColor(kRed);
-   H2->SetMarkerStyle(20);
-   H2->SetLineColor(kRed);
-   H2->SetLineWidth(2);
-   H3->SetMarkerColor(kBlue);
-   H3->SetMarkerStyle(20);
-   H3->SetLineColor(kBlue);
-   H3->SetLineWidth(2);
+   MakeCanvas(Histograms, Labels, Output, X, Y, WorldMin, WorldMax);
 
-   MakeCanvas(H1, H2, H3, HMin, HMax, Output, X, Y, WorldMin, WorldMax);
-
-   F3.Close();
-   F2.Close();
-   F1.Close();
+   for(int i = 0; i < N; i++)
+   {
+      Files[i]->Close();
+      delete Files[i];
+   }
 }
 
-void MakePlot2(string GenFile, string RecoFile, string DataFile, string Histogram1, string Histogram2, string Output, double WorldMin, double WorldMax)
+void MakePlot2(vector<string> FileNames, vector<string> Labels, string Histogram1, string Histogram2,
+   string Output, string X, string Y, double WorldMin, double WorldMax)
 {
-   TFile F1(GenFile.c_str());
-   TFile F2(RecoFile.c_str());
-   TFile F3(DataFile.c_str());
+   static vector<int> Colors = GetCVDColors6();
    
-   TH1D *N1 = (TH1D *)F1.Get("HN");
-   TH1D *N2 = (TH1D *)F2.Get("HN");
-   TH1D *N3 = (TH1D *)F3.Get("HN");
+   int N = FileNames.size();
 
-   TH1D *H11 = (TH1D *)F1.Get(Histogram1.c_str());
-   TH1D *H21 = (TH1D *)F2.Get(Histogram1.c_str());
-   TH1D *H31 = (TH1D *)F3.Get(Histogram1.c_str());
-   TH1D *H12 = (TH1D *)F1.Get(Histogram2.c_str());
-   TH1D *H22 = (TH1D *)F2.Get(Histogram2.c_str());
-   TH1D *H32 = (TH1D *)F3.Get(Histogram2.c_str());
-   
-   TH1D *HMin = (TH1D *)F1.Get("HBinMin");
-   TH1D *HMax = (TH1D *)F1.Get("HBinMax");
+   vector<TFile *> Files(N);
+   for(int i = 0; i < N; i++)
+      Files[i] = new TFile(FileNames[i].c_str());
+  
+   vector<TH1D *> Histograms(N);
+   for(int i = 0; i < N; i++)
+   {
+      TH1D *HN = (TH1D *)Files[i]->Get("HN");
+      TH1D *H1 = (TH1D *)Files[i]->Get(Histogram1.c_str());
+      TH1D *H2 = (TH1D *)Files[i]->Get(Histogram2.c_str());
 
-   H11->Scale(1 / N1->GetBinContent(1));
-   H21->Scale(1 / N2->GetBinContent(1));
-   H31->Scale(1 / N3->GetBinContent(1));
-   H12->Scale(1 / N1->GetBinContent(1));
-   H22->Scale(1 / N2->GetBinContent(1));
-   H32->Scale(1 / N3->GetBinContent(1));
+      H1->Scale(1 / HN->GetBinContent(1));
+      H2->Scale(1 / HN->GetBinContent(1));
 
-   H11->SetMarkerColor(kGreen + 3);
-   H11->SetMarkerStyle(20);
-   H11->SetLineColor(kGreen + 3);
-   H11->SetLineWidth(2);
-   H21->SetMarkerColor(kRed);
-   H21->SetMarkerStyle(20);
-   H21->SetLineColor(kRed);
-   H21->SetLineWidth(2);
-   H31->SetMarkerColor(kBlue);
-   H31->SetMarkerStyle(20);
-   H31->SetLineColor(kBlue);
-   H31->SetLineWidth(2);
-   H12->SetMarkerColor(kGreen + 3);
-   H12->SetMarkerStyle(20);
-   H12->SetLineColor(kGreen + 3);
-   H12->SetLineWidth(2);
-   H22->SetMarkerColor(kRed);
-   H22->SetMarkerStyle(20);
-   H22->SetLineColor(kRed);
-   H22->SetLineWidth(2);
-   H32->SetMarkerColor(kBlue);
-   H32->SetMarkerStyle(20);
-   H32->SetLineColor(kBlue);
-   H32->SetLineWidth(2);
+      H1->SetMarkerColor(Colors[i]);
+      H1->SetMarkerStyle(20);
+      H1->SetLineColor(Colors[i]);
+      H1->SetLineWidth(2);
+      H2->SetMarkerColor(Colors[i]);
+      H2->SetMarkerStyle(20);
+      H2->SetLineColor(Colors[i]);
+      H2->SetLineWidth(2);
 
-   H12->Divide(H11);
-   H22->Divide(H21);
-   H32->Divide(H31);
+      H2->Divide(H1);
 
-   MakeCanvas(H12, H22, H32, HMin, HMax, Output, "#theta_{L}", Histogram2 + "/" + Histogram1, WorldMin, WorldMax);
+      Histograms[i] = H2;
+   }
 
-   F3.Close();
-   F2.Close();
-   F1.Close();
+   MakeCanvas(Histograms, Labels, Output, X, Y, WorldMin, WorldMax);
+
+   for(int i = 0; i < N; i++)
+   {
+      Files[i]->Close();
+      delete Files[i];
+   }
 }
 
-void MakeCanvas(TH1D *H1, TH1D *H2, TH1D *H3, TH1D *HMin, TH1D *HMax, string Output, string X, string Y, double WorldMin, double WorldMax)
+void MakeCanvasOld(vector<TH1D *> Histograms, vector<string> Labels, string Output,
+   string X, string Y, double WorldMin, double WorldMax)
 {
-   int N = H1->GetNbinsX();
+   int NLine = Histograms.size();
+   int N = Histograms[0]->GetNbinsX();
 
    double L = 0.12;
    double R = 0.06;
@@ -172,13 +151,9 @@ void MakeCanvas(TH1D *H1, TH1D *H2, TH1D *H3, TH1D *HMin, TH1D *HMax, string Out
    HWorld.GetYaxis()->SetTitleOffset(1.5);
 
    HWorld.Draw();
-   H1->Draw("same");
-   H2->Draw("same");
-   H3->Draw("same");
+   for(TH1D *H : Histograms)
+      H->Draw("same");
 
-   // double BinMin = HMin->GetBinContent(1) / 1;
-   // double BinMiddle = M_PI / 2;
-   // double BinMax = HMax->GetBinContent(N) / 1;
    double BinMin = 0.002;
    double BinMiddle = M_PI / 2;
    double BinMax = M_PI - 0.002;
@@ -217,14 +192,171 @@ void MakeCanvas(TH1D *H1, TH1D *H2, TH1D *H3, TH1D *HMin, TH1D *HMax, string Out
    G.SetLineWidth(1);
    G.Draw("l");
 
-   TLegend Legend(0.2, 0.6, 0.4, 0.8);
+   TLegend Legend(0.2, 0.85, 0.4, 0.85 - 0.06 * NLine);
    Legend.SetTextFont(42);
    Legend.SetTextSize(0.035);
    Legend.SetFillStyle(0);
    Legend.SetBorderSize(0);
-   Legend.AddEntry(H1, "GEN", "pl");
-   Legend.AddEntry(H2, "RECO", "pl");
-   Legend.AddEntry(H3, "Pythia8", "pl");
+   for(int i = 0; i < NLine; i++)
+      Legend.AddEntry(Histograms[i], Labels[i].c_str(), "pl");
+   Legend.Draw();
+
+   Canvas.SaveAs(Output.c_str());
+}
+
+void MakeCanvas(vector<TH1D *> Histograms, vector<string> Labels, string Output,
+   string X, string Y, double WorldMin, double WorldMax)
+{
+   int NLine = Histograms.size();
+   int N = Histograms[0]->GetNbinsX();
+
+   double MarginL = 180;
+   double MarginR = 90;
+   double MarginB = 120;
+   double MarginT = 90;
+
+   double PadWidth = 1200;
+   double PadHeight = 640;
+   double PadRHeight = 240;
+
+   double CanvasWidth = MarginL + PadWidth + MarginR;
+   double CanvasHeight = MarginT + PadHeight + PadRHeight + MarginB;
+
+   MarginL = MarginL / CanvasWidth;
+   MarginR = MarginR / CanvasWidth;
+   MarginT = MarginT / CanvasHeight;
+   MarginB = MarginB / CanvasHeight;
+
+   PadWidth   = PadWidth / CanvasWidth;
+   PadHeight  = PadHeight / CanvasHeight;
+   PadRHeight = PadRHeight / CanvasHeight;
+
+   TCanvas Canvas("Canvas", "", CanvasWidth, CanvasHeight);
+   // Canvas.SetLogy();
+   // Canvas.SetRightMargin(MarginR);
+   // Canvas.SetLeftMargin(MarginL);
+   // Canvas.SetTopMargin(MarginT);
+   // Canvas.SetBottomMargin(MarginB);
+
+   TPad Pad("Pad", "", MarginL, MarginB + PadRHeight, MarginL + PadWidth, MarginB + PadHeight + PadRHeight);
+   Pad.SetLogy();
+   SetPad(Pad);
+   
+   TPad PadR("PadR", "", MarginL, MarginB, MarginL + PadWidth, MarginB + PadRHeight);
+   SetPad(PadR);
+
+   Pad.cd();
+
+   TH2D HWorld("HWorld", "", N, 0, N, 100, WorldMin, WorldMax);
+   HWorld.SetStats(0);
+   HWorld.GetXaxis()->SetTickLength(0);
+   HWorld.GetXaxis()->SetLabelSize(0);
+
+   HWorld.Draw("axis");
+   for(TH1D *H : Histograms)
+      H->Draw("same");
+
+   TGraph G;
+   G.SetPoint(0, N / 2, 0);
+   G.SetPoint(1, N / 2, 1000);
+   G.SetLineStyle(kDashed);
+   G.SetLineColor(kGray);
+   G.SetLineWidth(1);
+   G.Draw("l");
+
+   PadR.cd();
+
+   double WorldRMin = 0.5;
+   double WorldRMax = 1.5;
+   
+   TH2D HWorldR("HWorldR", "", N, 0, N, 100, WorldRMin, WorldRMax);
+   HWorldR.SetStats(0);
+   HWorldR.GetXaxis()->SetTickLength(0);
+   HWorldR.GetXaxis()->SetLabelSize(0);
+   HWorldR.GetYaxis()->SetNdivisions(503);
+
+   HWorldR.Draw("axis");
+   for(int i = 1; i < NLine; i++)
+   {
+      TH1D *H = (TH1D *)Histograms[i]->Clone();
+      H->Divide(Histograms[0]);
+      H->Draw("same");
+   }
+
+   G.Draw("l");
+
+   TGraph G2;
+   G2.SetPoint(0, 0, 1);
+   G2.SetPoint(1, 99999, 1);
+   G2.Draw("l");
+
+   double BinMin = 0.002;
+   double BinMiddle = M_PI / 2;
+   double BinMax = M_PI - 0.002;
+
+   Canvas.cd();
+   TGaxis X1(MarginL, MarginB, MarginL + PadWidth / 2, MarginB, BinMin, BinMiddle, 510, "GS");
+   TGaxis X2(MarginL + PadWidth, MarginB, MarginL + PadWidth / 2, MarginB, BinMin, BinMiddle, 510, "-GS");
+   TGaxis X3(MarginL, MarginB + PadRHeight, MarginL + PadWidth / 2, MarginB + PadRHeight, BinMin, BinMiddle, 510, "+-GS");
+   TGaxis X4(MarginL + PadWidth, MarginB + PadRHeight, MarginL + PadWidth / 2, MarginB + PadRHeight, BinMin, BinMiddle, 510, "+-GS");
+   TGaxis Y1(MarginL, MarginB, MarginL, MarginB + PadRHeight, WorldRMin, WorldRMax, 503, "");
+   TGaxis Y2(MarginL, MarginB + PadRHeight, MarginL, MarginB + PadRHeight + PadHeight, WorldMin, WorldMax, 510, "G");
+
+   Y1.SetLabelFont(42);
+   Y2.SetLabelFont(42);
+
+   X1.SetLabelSize(0);
+   X2.SetLabelSize(0);
+   X3.SetLabelSize(0);
+   X4.SetLabelSize(0);
+
+   X1.SetTickSize(0.06);
+   X2.SetTickSize(0.06);
+   X3.SetTickSize(0.06);
+   X4.SetTickSize(0.06);
+
+   X1.Draw();
+   X2.Draw();
+   X3.Draw();
+   X4.Draw();
+   Y1.Draw();
+   Y2.Draw();
+
+   TLatex Latex;
+   Latex.SetNDC();
+   Latex.SetTextFont(42);
+   Latex.SetTextSize(0.035);
+   Latex.SetTextAlign(23);
+   Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.115, MarginB - 0.01, "0.01");
+   Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.290, MarginB - 0.01, "0.1");
+   Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.465, MarginB - 0.01, "1");
+   Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.535, MarginB - 0.01, "#pi - 1");
+   Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.710, MarginB - 0.01, "#pi - 0.1");
+   Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.885, MarginB - 0.01, "#pi - 0.01");
+
+   Latex.SetTextAlign(12);
+   Latex.SetTextAngle(270);
+   Latex.SetTextColor(kGray);
+   Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.5 + 0.0175, 1 - MarginT - 0.015, "#theta_{L} = #pi/2");
+
+   Latex.SetTextAlign(22);
+   Latex.SetTextAngle(0);
+   Latex.SetTextColor(kBlack);
+   Latex.DrawLatex(MarginL + PadWidth * 0.5, MarginB * 0.3, X.c_str());
+
+   Latex.SetTextAlign(22);
+   Latex.SetTextAngle(90);
+   Latex.SetTextColor(kBlack);
+   Latex.DrawLatex(MarginL * 0.3, MarginB + PadRHeight * 0.5, "Ratio");
+   Latex.DrawLatex(MarginL * 0.3, MarginB + PadRHeight + PadHeight * 0.5, Y.c_str());
+
+   TLegend Legend(0.2, 0.85, 0.4, 0.85 - 0.06 * NLine);
+   Legend.SetTextFont(42);
+   Legend.SetTextSize(0.035);
+   Legend.SetFillStyle(0);
+   Legend.SetBorderSize(0);
+   for(int i = 0; i < NLine; i++)
+      Legend.AddEntry(Histograms[i], Labels[i].c_str(), "pl");
    Legend.Draw();
 
    Canvas.SaveAs(Output.c_str());
@@ -248,4 +380,14 @@ double GetMin(TH1D *H)
    return Min;
 }
 
+void SetPad(TPad &P)
+{
+   P.SetLeftMargin(0);
+   P.SetTopMargin(0);
+   P.SetRightMargin(0);
+   P.SetBottomMargin(0);
+   P.SetTickx();
+   P.SetTicky();
+   P.Draw();
+}
 
