@@ -30,10 +30,15 @@ int main(int argc, char *argv[])
    double MinParticlePT    = CL.GetDouble("MinParticlePT", 0.2);
    double MinTheta         = CL.GetDouble("MinTheta", 0.35);   // cos(0.35) = 0.94
    bool IsReco             = CL.GetBool("IsReco", true);
+   bool CheckCut           = CL.GetBool("CheckCut", IsReco);
+   bool CheckSphericity    = CL.GetBool("CheckSphericity", false);
    bool ChargedOnly        = CL.GetBool("ChargedOnly", true);
    bool DoEENormalize      = CL.GetBool("EENormalize", true);
    bool UseFullEnergy      = CL.GetBool("UseFullEnergy", true);
    bool DoWeight           = CL.GetBool("DoWeight", false);
+   double Fraction         = CL.GetDouble("Fraction", 1.00);
+   bool Reject3Jet         = CL.GetBool("Reject3Jet", false);
+   string JetTreeName      = Reject3Jet ? CL.Get("Jet") : "akR4ESchemeJetTree";
 
    TFile OutputFile(OutputFileName.c_str(), "RECREATE");
 
@@ -47,11 +52,19 @@ int main(int argc, char *argv[])
       Bins[2*BinCount-i] = BinMax * 2 - exp(log(BinMin) + (log(BinMax) - log(BinMin)) / BinCount * i);
    }
 
+   double LinearBins[2*BinCount+1];
+   for(int i = 0; i <= 2 * BinCount; i++)
+      LinearBins[i] = M_PI / (2 * BinCount) * i;
+
    TH1D HN("HN", ";;", 1, 0, 1);
    TH1D HEEC2("HEEC2", ";EEC_{2};", 2 * BinCount, 0, 2 * BinCount);
    TH1D HEEC3("HEEC3", ";EEC_{3};", 2 * BinCount, 0, 2 * BinCount);
    TH1D HEEC4("HEEC4", ";EEC_{4};", 2 * BinCount, 0, 2 * BinCount);
    TH1D HEEC5("HEEC5", ";EEC_{5};", 2 * BinCount, 0, 2 * BinCount);
+   TH1D HLinearEEC2("HLinearEEC2", ";EEC_{2};", 2 * BinCount, LinearBins);
+   TH1D HLinearEEC3("HLinearEEC3", ";EEC_{3};", 2 * BinCount, LinearBins);
+   TH1D HLinearEEC4("HLinearEEC4", ";EEC_{4};", 2 * BinCount, LinearBins);
+   TH1D HLinearEEC5("HLinearEEC5", ";EEC_{5};", 2 * BinCount, LinearBins);
    TH1D HBinMin("HBinMin", ";EEC;BinMin", 2 * BinCount, 0, 2 * BinCount);
    TH1D HBinMax("HBinMax", ";EEC;BinMax", 2 * BinCount, 0, 2 * BinCount);
 
@@ -65,16 +78,21 @@ int main(int argc, char *argv[])
    HEEC3.SetStats(0);
    HEEC4.SetStats(0);
    HEEC5.SetStats(0);
+   HLinearEEC2.SetStats(0);
+   HLinearEEC3.SetStats(0);
+   HLinearEEC4.SetStats(0);
+   HLinearEEC5.SetStats(0);
 
    TFile File(InputFileName.c_str());
 
    float NEvent = 0;
 
    ParticleTreeMessenger MParticle(File, ParticleTreeName.c_str());
+   JetTreeMessenger MJet(File, JetTreeName.c_str());
 
    alephTrkEfficiency efficiencyCorrector;
 
-   int EntryCount = MParticle.GetEntries();
+   int EntryCount = MParticle.GetEntries() * Fraction;
    ProgressBar Bar(cout, EntryCount);
    for(int iE = 0; iE < EntryCount; iE++)
    {
@@ -85,8 +103,21 @@ int main(int argc, char *argv[])
       }
 
       MParticle.GetEntry(iE);
+      if(Reject3Jet == true)
+      {
+         MJet.GetEntry(iE);
 
-      if(IsReco == true && MParticle.PassBaselineCut() == false)
+         int N5 = 0;
+         for(int i = 0; i < MJet.nref; i++)
+            if(MJet.Jet[i][0] >= 5)
+               N5 = N5 + 1;
+         if(N5 > 2)
+            continue;
+      }
+
+      if(CheckCut == true && MParticle.PassBaselineCut() == false)
+         continue;
+      if(CheckSphericity == true && MParticle.passesSTheta == false)
          continue;
 
       NEvent = NEvent + 1;
@@ -147,18 +178,21 @@ int main(int argc, char *argv[])
             double Max2 = D[i1][i2];
             int Bin2 = FindBin(Max2, BinCount * 2, Bins);
             HEEC2.Fill(Bin2, P[i1][0] * P[i2][0] / TotalE2 * W[i1] * W[i2]);
+            HLinearEEC2.Fill(Max2, P[i1][0] * P[i2][0] / TotalE2 * W[i1] * W[i2]);
 
             for(int i3 = i2 + 1; i3 < N; i3++)
             {
                double Max3 = GetMax({Max2, D[i1][i3], D[i2][i3]});
                int Bin3 = FindBin(Max3, BinCount * 2, Bins);
                HEEC3.Fill(Bin3, P[i1][0] * P[i2][0] * P[i3][0] / TotalE3 * W[i1] * W[i2] * W[i3]);
+               HLinearEEC3.Fill(Max3, P[i1][0] * P[i2][0] * P[i3][0] / TotalE3 * W[i1] * W[i2] * W[i3]);
            
                for(int i4 = i3 + 1; i4 < N; i4++)
                {
                   double Max4 = GetMax({Max3, D[i1][i4], D[i2][i4], D[i3][i4]});
                   int Bin4 = FindBin(Max4, BinCount * 2, Bins);
                   HEEC4.Fill(Bin4, P[i1][0] * P[i2][0] * P[i3][0] * P[i4][0] / TotalE4 * W[i1] * W[i2] * W[i3] * W[i4]);
+                  HLinearEEC4.Fill(Max4, P[i1][0] * P[i2][0] * P[i3][0] * P[i4][0] / TotalE4 * W[i1] * W[i2] * W[i3] * W[i4]);
 
                   /*
                   for(int i5 = i4 + 1; i5 < N; i5++)
@@ -166,6 +200,7 @@ int main(int argc, char *argv[])
                      double Max5 = GetMax({Max4, D[i1][i5], D[i2][i5], D[i3][i5], D[i4][i5]});
                      int Bin5 = FindBin(Max5, BinCount * 2, Bins);
                      HEEC5.Fill(Bin5, P[i1][0] * P[i2][0] * P[i3][0] * P[i4][0] * P[i5][0] / TotalE5 * W[i1] * W[i2] * W[i3] * W[i4] * W[i5]);
+                     HLinearEEC5.Fill(Max5, P[i1][0] * P[i2][0] * P[i3][0] * P[i4][0] * P[i5][0] / TotalE5 * W[i1] * W[i2] * W[i3] * W[i4] * W[i5]);
                   }
                   */
                }
@@ -184,6 +219,10 @@ int main(int argc, char *argv[])
    DivideByBin(HEEC3, Bins);
    DivideByBin(HEEC4, Bins);
    DivideByBin(HEEC5, Bins);
+   DivideByBin(HLinearEEC2, LinearBins);
+   DivideByBin(HLinearEEC3, LinearBins);
+   DivideByBin(HLinearEEC4, LinearBins);
+   DivideByBin(HLinearEEC5, LinearBins);
   
    OutputFile.cd();
 
@@ -192,6 +231,10 @@ int main(int argc, char *argv[])
    HEEC3.Write();
    HEEC4.Write();
    HEEC5.Write();
+   HLinearEEC2.Write();
+   HLinearEEC3.Write();
+   HLinearEEC4.Write();
+   HLinearEEC5.Write();
    HBinMin.Write();
    HBinMax.Write();
 

@@ -7,19 +7,23 @@ using namespace std;
 #include "TLegend.h"
 #include "TGaxis.h"
 #include "TPad.h"
+#include "TGraph.h"
 
 #include "SetStyle.h"
-#include "PlotHelper4.h"
+#include "CommandLine.h"
 
 int main(int argc, char *argv[]);
 void MakePlot(vector<string> FileNames, vector<string> Labels, string Histogram, string Output,
-   string X = "", string Y = "", double WorldMin = 1e-3, double WorldMax = 1);
+   string X = "", string Y = "", double WorldMin = 1e-3, double WorldMax = 1, bool DoRatio = true,
+   bool LogX = true);
 void MakePlot2(vector<string> FileNames, vector<string> Labels, string Histogram1, string Histogram2,
-   string Output, string X = "", string Y = "", double WorldMin = 1e-3, double WorldMax = 1);
+   string Output, string X = "", string Y = "", double WorldMin = 1e-3, double WorldMax = 1, bool DoRatio = true,
+   bool LogX = true);
 void MakeCanvasOld(vector<TH1D *> Histograms, vector<string> Labels, string Output,
    string X = "", string Y = "", double WorldMin = 1e-3, double WorldMax = 1);
 void MakeCanvas(vector<TH1D *> Histograms, vector<string> Labels, string Output,
-   string X = "", string Y = "", double WorldMin = 1e-3, double WorldMax = 1);
+   string X = "", string Y = "", double WorldMin = 1e-3, double WorldMax = 1, bool DoRatio = true,
+   bool LogX = true);
 double GetMin(TH1D *H);
 void SetPad(TPad &P);
 
@@ -27,24 +31,49 @@ int main(int argc, char *argv[])
 {
    SetThesisStyle();
 
-   vector<string> FileNames{"PlotGen.root", "PlotReco.root", "PlotPythia8.root"};
-   vector<string> Labels{"GEN Archived MC", "RECO Archived MC", "Pythia8"};
+   CommandLine CL(argc, argv);
+
+   vector<string> DefaultFileNames{"PlotGen.root", "PlotReco.root", "PlotPythia8.root"};
+   vector<string> DefaultLabels{"Archived MC", "Archived MC + detector", "Pythia8"};
+
+   vector<string> FileNames = CL.GetStringVector("Input", DefaultFileNames);
+   vector<string> Labels = CL.GetStringVector("Label", DefaultLabels);
+   string Prefix = CL.Get("Prefix", "");
+   bool DoRatio = CL.GetBool("DoRatio", true);
    
-   MakePlot(FileNames, Labels, "HEEC2", "EEC2.pdf",
-      "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}/E^{2})}{d #theta_{L}}", 2e-3, 10);
-   MakePlot(FileNames, Labels, "HEEC3", "EEC3.pdf",
-      "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}E_{k}/E^{3})}{d #theta_{L}}", 2e-6, 10);
-   MakePlot(FileNames, Labels, "HEEC4", "EEC4.pdf",
-      "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}E_{k}E_{l}/E^{4})}{d #theta_{L}}", 2e-8, 10);
-   
-   MakePlot2(FileNames, Labels, "HEEC2", "HEEC3", "EEC3EEC2.pdf", "#theta_{L}", "Ratio E3C/E2C", 2e-4, 10);
-   MakePlot2(FileNames, Labels, "HEEC2", "HEEC4", "EEC4EEC2.pdf", "#theta_{L}", "Ratio E4C/E2C", 2e-6, 10);
+   string Suffix = "";
+   double YMax = DoRatio ? 10 : 1;
+
+   MakePlot(FileNames, Labels, "HEEC2", Prefix + "EEC2" + Suffix,
+         "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}/E^{2})}{d #theta_{L}}", 2e-3, YMax,
+         DoRatio, true);
+   MakePlot(FileNames, Labels, "HEEC3", Prefix + "EEC3" + Suffix,
+         "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}E_{k}/E^{3})}{d #theta_{L}}", 2e-6, YMax,
+         DoRatio, true);
+   MakePlot(FileNames, Labels, "HEEC4", Prefix + "EEC4" + Suffix,
+         "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}E_{k}E_{l}/E^{4})}{d #theta_{L}}", 2e-8, YMax,
+         DoRatio, true);
+
+   MakePlot(FileNames, Labels, "HLinearEEC2", Prefix + "LinearEEC2" + Suffix,
+         "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}/E^{2})}{d #theta_{L}}", 2e-3, YMax,
+         DoRatio, false);
+   MakePlot(FileNames, Labels, "HLinearEEC3", Prefix + "LinearEEC3" + Suffix,
+         "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}E_{k}/E^{3})}{d #theta_{L}}", 2e-6, YMax,
+         DoRatio, false);
+   MakePlot(FileNames, Labels, "HLinearEEC4", Prefix + "LinearEEC4" + Suffix,
+         "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}E_{k}E_{l}/E^{4})}{d #theta_{L}}", 2e-8, YMax,
+         DoRatio, false);
+
+   MakePlot2(FileNames, Labels, "HEEC2", "HEEC3", Prefix + "EEC3EEC2" + Suffix,
+         "#theta_{L}", "Ratio E3C/E2C", 2e-4, YMax, true, true);
+   MakePlot2(FileNames, Labels, "HEEC2", "HEEC4", Prefix + "EEC4EEC2" + Suffix,
+         "#theta_{L}", "Ratio E4C/E2C", 2e-6, YMax, true, true);
 
    return 0;
 }
 
 void MakePlot(vector<string> FileNames, vector<string> Labels, string Histogram, string Output,
-   string X, string Y, double WorldMin, double WorldMax)
+   string X, string Y, double WorldMin, double WorldMax, bool DoRatio, bool LogX)
 {
    static vector<int> Colors = GetCVDColors6();
 
@@ -54,11 +83,20 @@ void MakePlot(vector<string> FileNames, vector<string> Labels, string Histogram,
    for(int i = 0; i < N; i++)
       Files[i] = new TFile(FileNames[i].c_str());
 
+   bool Error = false;
+
    vector<TH1D *> Histograms(N);
    for(int i = 0; i < N; i++)
    {
       TH1D *HN = (TH1D *)Files[i]->Get("HN");
       TH1D *H = (TH1D *)Files[i]->Get(Histogram.c_str());
+
+      if(H == nullptr || HN == nullptr)
+      {
+         Error = true;
+         break;
+      }
+
       H->Scale(1 / HN->GetBinContent(1));
       H->SetMarkerColor(Colors[i]);
       H->SetMarkerStyle(20);
@@ -67,7 +105,8 @@ void MakePlot(vector<string> FileNames, vector<string> Labels, string Histogram,
       Histograms[i] = H;
    }
 
-   MakeCanvas(Histograms, Labels, Output, X, Y, WorldMin, WorldMax);
+   if(Error == false)
+      MakeCanvas(Histograms, Labels, Output, X, Y, WorldMin, WorldMax, DoRatio, LogX);
 
    for(int i = 0; i < N; i++)
    {
@@ -77,7 +116,7 @@ void MakePlot(vector<string> FileNames, vector<string> Labels, string Histogram,
 }
 
 void MakePlot2(vector<string> FileNames, vector<string> Labels, string Histogram1, string Histogram2,
-   string Output, string X, string Y, double WorldMin, double WorldMax)
+   string Output, string X, string Y, double WorldMin, double WorldMax, bool DoRatio, bool LogX)
 {
    static vector<int> Colors = GetCVDColors6();
    
@@ -86,6 +125,8 @@ void MakePlot2(vector<string> FileNames, vector<string> Labels, string Histogram
    vector<TFile *> Files(N);
    for(int i = 0; i < N; i++)
       Files[i] = new TFile(FileNames[i].c_str());
+
+   bool Error = false;
   
    vector<TH1D *> Histograms(N);
    for(int i = 0; i < N; i++)
@@ -93,6 +134,12 @@ void MakePlot2(vector<string> FileNames, vector<string> Labels, string Histogram
       TH1D *HN = (TH1D *)Files[i]->Get("HN");
       TH1D *H1 = (TH1D *)Files[i]->Get(Histogram1.c_str());
       TH1D *H2 = (TH1D *)Files[i]->Get(Histogram2.c_str());
+
+      if(H1 == nullptr || H2 == nullptr || HN == nullptr)
+      {
+         Error = true;
+         break;
+      }
 
       H1->Scale(1 / HN->GetBinContent(1));
       H2->Scale(1 / HN->GetBinContent(1));
@@ -111,7 +158,8 @@ void MakePlot2(vector<string> FileNames, vector<string> Labels, string Histogram
       Histograms[i] = H2;
    }
 
-   MakeCanvas(Histograms, Labels, Output, X, Y, WorldMin, WorldMax);
+   if(Error == false)
+      MakeCanvas(Histograms, Labels, Output, X, Y, WorldMin, WorldMax, DoRatio, LogX);
 
    for(int i = 0; i < N; i++)
    {
@@ -201,11 +249,11 @@ void MakeCanvasOld(vector<TH1D *> Histograms, vector<string> Labels, string Outp
       Legend.AddEntry(Histograms[i], Labels[i].c_str(), "pl");
    Legend.Draw();
 
-   Canvas.SaveAs(Output.c_str());
+   Canvas.SaveAs((Output + ".pdf").c_str());
 }
 
 void MakeCanvas(vector<TH1D *> Histograms, vector<string> Labels, string Output,
-   string X, string Y, double WorldMin, double WorldMax)
+   string X, string Y, double WorldMin, double WorldMax, bool DoRatio, bool LogX)
 {
    int NLine = Histograms.size();
    int N = Histograms[0]->GetNbinsX();
@@ -215,9 +263,12 @@ void MakeCanvas(vector<TH1D *> Histograms, vector<string> Labels, string Output,
    double MarginB = 120;
    double MarginT = 90;
 
+   double WorldXMin = LogX ? 0 : 0;
+   double WorldXMax = LogX ? N : M_PI;
+   
    double PadWidth = 1200;
-   double PadHeight = 640;
-   double PadRHeight = 240;
+   double PadHeight = DoRatio ? 640 : 640 + 240;
+   double PadRHeight = DoRatio ? 240 : 0.001;
 
    double CanvasWidth = MarginL + PadWidth + MarginR;
    double CanvasHeight = MarginT + PadHeight + PadRHeight + MarginB;
@@ -243,11 +294,12 @@ void MakeCanvas(vector<TH1D *> Histograms, vector<string> Labels, string Output,
    SetPad(Pad);
    
    TPad PadR("PadR", "", MarginL, MarginB, MarginL + PadWidth, MarginB + PadRHeight);
-   SetPad(PadR);
+   if(DoRatio)
+      SetPad(PadR);
 
    Pad.cd();
 
-   TH2D HWorld("HWorld", "", N, 0, N, 100, WorldMin, WorldMax);
+   TH2D HWorld("HWorld", "", N, WorldXMin, WorldXMax, 100, WorldMin, WorldMax);
    HWorld.SetStats(0);
    HWorld.GetXaxis()->SetTickLength(0);
    HWorld.GetXaxis()->SetLabelSize(0);
@@ -257,69 +309,93 @@ void MakeCanvas(vector<TH1D *> Histograms, vector<string> Labels, string Output,
       H->Draw("same");
 
    TGraph G;
-   G.SetPoint(0, N / 2, 0);
-   G.SetPoint(1, N / 2, 1000);
+   G.SetPoint(0, LogX ? N / 2 : M_PI / 2, 0);
+   G.SetPoint(1, LogX ? N / 2 : M_PI / 2, 1000);
    G.SetLineStyle(kDashed);
    G.SetLineColor(kGray);
    G.SetLineWidth(1);
    G.Draw("l");
 
-   PadR.cd();
+   if(DoRatio)
+      PadR.cd();
 
-   double WorldRMin = 0.5;
-   double WorldRMax = 1.5;
+   double WorldRMin = 0.6;
+   double WorldRMax = 1.4;
    
-   TH2D HWorldR("HWorldR", "", N, 0, N, 100, WorldRMin, WorldRMax);
-   HWorldR.SetStats(0);
-   HWorldR.GetXaxis()->SetTickLength(0);
-   HWorldR.GetXaxis()->SetLabelSize(0);
-   HWorldR.GetYaxis()->SetNdivisions(503);
-
-   HWorldR.Draw("axis");
-   for(int i = 1; i < NLine; i++)
-   {
-      TH1D *H = (TH1D *)Histograms[i]->Clone();
-      H->Divide(Histograms[0]);
-      H->Draw("same");
-   }
-
-   G.Draw("l");
-
+   TH2D HWorldR("HWorldR", "", N, WorldXMin, WorldXMax, 100, WorldRMin, WorldRMax);
    TGraph G2;
-   G2.SetPoint(0, 0, 1);
-   G2.SetPoint(1, 99999, 1);
-   G2.Draw("l");
+   
+   if(DoRatio)
+   {
+      HWorldR.SetStats(0);
+      HWorldR.GetXaxis()->SetTickLength(0);
+      HWorldR.GetXaxis()->SetLabelSize(0);
+      HWorldR.GetYaxis()->SetNdivisions(505);
 
-   double BinMin = 0.002;
+      HWorldR.Draw("axis");
+      for(int i = 1; i < NLine; i++)
+      {
+         TH1D *H = (TH1D *)Histograms[i]->Clone();
+         H->Divide(Histograms[0]);
+         H->Draw("same");
+      }
+
+      G.Draw("l");
+
+      G2.SetPoint(0, 0, 1);
+      G2.SetPoint(1, 99999, 1);
+      G2.Draw("l");
+   }
+   
+   double BinMin    = 0.002;
    double BinMiddle = M_PI / 2;
-   double BinMax = M_PI - 0.002;
+   double BinMax    = M_PI - 0.002;
 
    Canvas.cd();
    TGaxis X1(MarginL, MarginB, MarginL + PadWidth / 2, MarginB, BinMin, BinMiddle, 510, "GS");
    TGaxis X2(MarginL + PadWidth, MarginB, MarginL + PadWidth / 2, MarginB, BinMin, BinMiddle, 510, "-GS");
    TGaxis X3(MarginL, MarginB + PadRHeight, MarginL + PadWidth / 2, MarginB + PadRHeight, BinMin, BinMiddle, 510, "+-GS");
    TGaxis X4(MarginL + PadWidth, MarginB + PadRHeight, MarginL + PadWidth / 2, MarginB + PadRHeight, BinMin, BinMiddle, 510, "+-GS");
-   TGaxis Y1(MarginL, MarginB, MarginL, MarginB + PadRHeight, WorldRMin, WorldRMax, 503, "");
+   TGaxis Y1(MarginL, MarginB, MarginL, MarginB + PadRHeight, WorldRMin, WorldRMax, 505, "");
    TGaxis Y2(MarginL, MarginB + PadRHeight, MarginL, MarginB + PadRHeight + PadHeight, WorldMin, WorldMax, 510, "G");
+   
+   TGaxis XL1(MarginL, MarginB, MarginL + PadWidth, MarginB, 0, M_PI, 510, "S");
+   TGaxis XL2(MarginL, MarginB + PadRHeight, MarginL + PadWidth, MarginB + PadRHeight, 0, M_PI, 510, "+-S");
 
    Y1.SetLabelFont(42);
    Y2.SetLabelFont(42);
+   XL1.SetLabelFont(42);
+   XL2.SetLabelFont(42);
 
    X1.SetLabelSize(0);
    X2.SetLabelSize(0);
    X3.SetLabelSize(0);
    X4.SetLabelSize(0);
+   // XL1.SetLabelSize(0);
+   XL2.SetLabelSize(0);
 
    X1.SetTickSize(0.06);
    X2.SetTickSize(0.06);
    X3.SetTickSize(0.06);
    X4.SetTickSize(0.06);
+   XL1.SetTickSize(0.03);
+   XL2.SetTickSize(0.03);
 
-   X1.Draw();
-   X2.Draw();
-   X3.Draw();
-   X4.Draw();
-   Y1.Draw();
+   if(LogX == true)
+   {
+      X1.Draw();
+      X2.Draw();
+      if(DoRatio) X3.Draw();
+      if(DoRatio) X4.Draw();
+   }
+   if(LogX == false)
+   {
+      XL1.Draw();
+      if(DoRatio)
+         XL2.Draw();
+   }
+   if(DoRatio)
+      Y1.Draw();
    Y2.Draw();
 
    TLatex Latex;
@@ -327,12 +403,12 @@ void MakeCanvas(vector<TH1D *> Histograms, vector<string> Labels, string Output,
    Latex.SetTextFont(42);
    Latex.SetTextSize(0.035);
    Latex.SetTextAlign(23);
-   Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.115, MarginB - 0.01, "0.01");
-   Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.290, MarginB - 0.01, "0.1");
-   Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.465, MarginB - 0.01, "1");
-   Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.535, MarginB - 0.01, "#pi - 1");
-   Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.710, MarginB - 0.01, "#pi - 0.1");
-   Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.885, MarginB - 0.01, "#pi - 0.01");
+   if(LogX) Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.115, MarginB - 0.01, "0.01");
+   if(LogX) Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.290, MarginB - 0.01, "0.1");
+   if(LogX) Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.465, MarginB - 0.01, "1");
+   if(LogX) Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.535, MarginB - 0.01, "#pi - 1");
+   if(LogX) Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.710, MarginB - 0.01, "#pi - 0.1");
+   if(LogX) Latex.DrawLatex(MarginL + (1 - MarginR - MarginL) * 0.885, MarginB - 0.01, "#pi - 0.01");
 
    Latex.SetTextAlign(12);
    Latex.SetTextAngle(270);
@@ -347,19 +423,42 @@ void MakeCanvas(vector<TH1D *> Histograms, vector<string> Labels, string Output,
    Latex.SetTextAlign(22);
    Latex.SetTextAngle(90);
    Latex.SetTextColor(kBlack);
-   Latex.DrawLatex(MarginL * 0.3, MarginB + PadRHeight * 0.5, "Ratio");
+   if(DoRatio)
+      Latex.DrawLatex(MarginL * 0.3, MarginB + PadRHeight * 0.5, "Ratio");
    Latex.DrawLatex(MarginL * 0.3, MarginB + PadRHeight + PadHeight * 0.5, Y.c_str());
 
-   TLegend Legend(0.2, 0.85, 0.4, 0.85 - 0.06 * NLine);
+   Latex.SetTextAlign(11);
+   Latex.SetTextAngle(0);
+   Latex.DrawLatex(MarginL, MarginB + PadRHeight + PadHeight + 0.012, "ALEPH e^{+}e^{-}, #sqrt{s} = 91.2 GeV, Work-in-progress");
+
+   Latex.SetTextAlign(11);
+   Latex.SetTextAngle(0);
+   Latex.SetTextColor(19);
+   Latex.SetTextSize(0.02);
+   Latex.DrawLatex(0.01, 0.01, "Work-in-progress Yi Chen + HB/YJL/AB/..., 2024 Feb 12 (26436_FullEventEEC)");
+
+   TLegend Legend(0.15, 0.90, 0.35, 0.90 - 0.06 * min(NLine, 4));
    Legend.SetTextFont(42);
    Legend.SetTextSize(0.035);
    Legend.SetFillStyle(0);
    Legend.SetBorderSize(0);
-   for(int i = 0; i < NLine; i++)
+   for(int i = 0; i < NLine && i < 4; i++)
       Legend.AddEntry(Histograms[i], Labels[i].c_str(), "pl");
    Legend.Draw();
 
-   Canvas.SaveAs(Output.c_str());
+   TLegend Legend2(0.7, 0.90, 0.9, 0.90 - 0.06 * (NLine - 4));
+   Legend2.SetTextFont(42);
+   Legend2.SetTextSize(0.035);
+   Legend2.SetFillStyle(0);
+   Legend2.SetBorderSize(0);
+   if(NLine >= 4)
+   {
+      for(int i = 4; i < NLine; i++)
+         Legend2.AddEntry(Histograms[i], Labels[i].c_str(), "pl");
+      Legend2.Draw();
+   }
+
+   Canvas.SaveAs((Output + ".pdf").c_str());
 }
 
 double GetMin(TH1D *H)
