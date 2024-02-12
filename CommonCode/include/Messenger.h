@@ -73,6 +73,7 @@ public:
    float         phi[MAXPARTICLE];
    float         mass[MAXPARTICLE];
    short         charge[MAXPARTICLE];
+   bool          isCharged[MAXPARTICLE];
    short         pwflag[MAXPARTICLE];
    int           pid[MAXPARTICLE];
    float         d0[MAXPARTICLE];

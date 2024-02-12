@@ -179,6 +179,8 @@ bool ParticleTreeMessenger::Initialize()
       Tree->SetBranchAddress("mass", &mass);
    if(Tree->GetBranch("charge") != nullptr)
       Tree->SetBranchAddress("charge", &charge);
+   if(Tree->GetBranch("isCharged") != nullptr)
+      Tree->SetBranchAddress("isCharged", &isCharged);
    if(Tree->GetBranch("pwflag") != nullptr)
       Tree->SetBranchAddress("pwflag", &pwflag);
    if(Tree->GetBranch("pid") != nullptr)
@@ -335,6 +337,8 @@ bool ParticleTreeMessenger::Initialize()
       Tree->SetBranchAddress("passesNTrkMin", &passesNTrkMin);
    if(Tree->GetBranch("passesSTheta") != nullptr)
       Tree->SetBranchAddress("passesSTheta", &passesSTheta);
+   else if(Tree->GetBranch("passSphericity") != nullptr)   // Hannah pythia8
+      Tree->SetBranchAddress("passSphericity", &passesSTheta);
    if(Tree->GetBranch("passesMissP") != nullptr)
       Tree->SetBranchAddress("passesMissP", &passesMissP);
    if(Tree->GetBranch("passesISR") != nullptr)
@@ -558,7 +562,7 @@ int ParticleTreeMessenger::GetEntries()
 
 bool ParticleTreeMessenger::PassBaselineCut()
 {
-   if(passesAll == false)
+   if(passesLEP1TwoPC == false)
       return false;
 
    double SumP = 0;
