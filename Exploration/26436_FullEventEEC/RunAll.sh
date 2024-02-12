@@ -7,6 +7,9 @@ do
 		--Output PlotGen_$j.root \
 		--Particle tgen --IsReco false --DoEENormalize true --DoWeight false
 	./Execute --Input $ProjectBase/Samples/ALEPHMC/LEP1MC1994_recons_aftercut-0$j.root \
+		--Output PlotGenSTheta_$j.root \
+		--Particle tgen --IsReco false --DoEENormalize true --DoWeight false --CheckSphericity true
+	./Execute --Input $ProjectBase/Samples/ALEPHMC/LEP1MC1994_recons_aftercut-0$j.root \
 		--Output PlotReco_$j.root \
 		--Particle t --IsReco true --DoEENormalize true --DoWeight true
 done
