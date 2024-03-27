@@ -47,6 +47,9 @@ int main(int argc, char *argv[])
    MakePlot(FileNames, Labels, "HEEC2", Prefix + "EEC2" + Suffix,
          "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}/E^{2})}{d #theta_{L}}", 2e-3, YMax,
          DoRatio, true);
+   MakePlot(FileNames, Labels, "HE2E2C", Prefix + "E2E2C" + Suffix,
+         "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}^{2}E_{j}^{2}/E^{4})}{d #theta_{L}}", 2e-6, YMax / 100,
+         DoRatio, true);
    MakePlot(FileNames, Labels, "HEEC3", Prefix + "EEC3" + Suffix,
          "#theta_{L}", "#frac{1}{N_{event}} #frac{d(Sum E_{i}E_{j}E_{k}/E^{3})}{d #theta_{L}}", 2e-6, YMax,
          DoRatio, true);
@@ -90,6 +93,8 @@ void MakePlot(vector<string> FileNames, vector<string> Labels, string Histogram,
    {
       TH1D *HN = (TH1D *)Files[i]->Get("HN");
       TH1D *H = (TH1D *)Files[i]->Get(Histogram.c_str());
+
+      cout << FileNames[i] << " " << HN << " " << H << endl;
 
       if(H == nullptr || HN == nullptr)
       {

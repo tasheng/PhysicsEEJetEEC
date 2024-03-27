@@ -58,6 +58,7 @@ int main(int argc, char *argv[])
 
    TH1D HN("HN", ";;", 1, 0, 1);
    TH1D HEEC2("HEEC2", ";EEC_{2};", 2 * BinCount, 0, 2 * BinCount);
+   TH1D HE2E2C("HE2E2C", ";E^{2}E^{2}C_{2};", 2 * BinCount, 0, 2 * BinCount);
    TH1D HEEC3("HEEC3", ";EEC_{3};", 2 * BinCount, 0, 2 * BinCount);
    TH1D HEEC4("HEEC4", ";EEC_{4};", 2 * BinCount, 0, 2 * BinCount);
    TH1D HEEC5("HEEC5", ";EEC_{5};", 2 * BinCount, 0, 2 * BinCount);
@@ -75,6 +76,7 @@ int main(int argc, char *argv[])
    }
 
    HEEC2.SetStats(0);
+   HE2E2C.SetStats(0);
    HEEC3.SetStats(0);
    HEEC4.SetStats(0);
    HEEC5.SetStats(0);
@@ -179,6 +181,7 @@ int main(int argc, char *argv[])
             int Bin2 = FindBin(Max2, BinCount * 2, Bins);
             HEEC2.Fill(Bin2, P[i1][0] * P[i2][0] / TotalE2 * W[i1] * W[i2]);
             HLinearEEC2.Fill(Max2, P[i1][0] * P[i2][0] / TotalE2 * W[i1] * W[i2]);
+            HE2E2C.Fill(Bin2, P[i1][0] * P[i2][0] * P[i1][0] * P[i2][0] / TotalE4 * W[i1] * W[i2]);
 
             for(int i3 = i2 + 1; i3 < N; i3++)
             {
@@ -187,6 +190,7 @@ int main(int argc, char *argv[])
                HEEC3.Fill(Bin3, P[i1][0] * P[i2][0] * P[i3][0] / TotalE3 * W[i1] * W[i2] * W[i3]);
                HLinearEEC3.Fill(Max3, P[i1][0] * P[i2][0] * P[i3][0] / TotalE3 * W[i1] * W[i2] * W[i3]);
            
+               /*
                for(int i4 = i3 + 1; i4 < N; i4++)
                {
                   double Max4 = GetMax({Max3, D[i1][i4], D[i2][i4], D[i3][i4]});
@@ -194,7 +198,6 @@ int main(int argc, char *argv[])
                   HEEC4.Fill(Bin4, P[i1][0] * P[i2][0] * P[i3][0] * P[i4][0] / TotalE4 * W[i1] * W[i2] * W[i3] * W[i4]);
                   HLinearEEC4.Fill(Max4, P[i1][0] * P[i2][0] * P[i3][0] * P[i4][0] / TotalE4 * W[i1] * W[i2] * W[i3] * W[i4]);
 
-                  /*
                   for(int i5 = i4 + 1; i5 < N; i5++)
                   {
                      double Max5 = GetMax({Max4, D[i1][i5], D[i2][i5], D[i3][i5], D[i4][i5]});
@@ -202,8 +205,8 @@ int main(int argc, char *argv[])
                      HEEC5.Fill(Bin5, P[i1][0] * P[i2][0] * P[i3][0] * P[i4][0] * P[i5][0] / TotalE5 * W[i1] * W[i2] * W[i3] * W[i4] * W[i5]);
                      HLinearEEC5.Fill(Max5, P[i1][0] * P[i2][0] * P[i3][0] * P[i4][0] * P[i5][0] / TotalE5 * W[i1] * W[i2] * W[i3] * W[i4] * W[i5]);
                   }
-                  */
                }
+               */
             }
          }
       }
@@ -216,6 +219,7 @@ int main(int argc, char *argv[])
 
    HN.SetBinContent(1, NEvent);
    DivideByBin(HEEC2, Bins);
+   DivideByBin(HE2E2C, Bins);
    DivideByBin(HEEC3, Bins);
    DivideByBin(HEEC4, Bins);
    DivideByBin(HEEC5, Bins);
@@ -228,6 +232,7 @@ int main(int argc, char *argv[])
 
    HN.Write();
    HEEC2.Write();
+   HE2E2C.Write();
    HEEC3.Write();
    HEEC4.Write();
    HEEC5.Write();
