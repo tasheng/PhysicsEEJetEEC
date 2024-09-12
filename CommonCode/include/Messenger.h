@@ -12,6 +12,7 @@
 
 class JetTreeMessenger;
 class ParticleTreeMessenger;
+class ReducedTreeMessenger;
 
 class JetTreeMessenger
 {
@@ -260,3 +261,30 @@ public:
    int GetEntries();
    bool PassBaselineCut();
 };
+
+class ReducedTreeMessenger
+{
+public:
+   TTree *Tree;
+   int    N;
+   float  Momentum[MAXPARTICLE];
+   float  Mass[MAXPARTICLE];
+   float  Theta[MAXPARTICLE];
+   float  Phi[MAXPARTICLE];
+   float  Weight[MAXPARTICLE];
+   short  Charge[MAXPARTICLE];
+   bool   PassCut;
+public:
+   std::vector<FourVector> P;
+public:
+   ReducedTreeMessenger();
+   ReducedTreeMessenger(TFile &file, std::string name);
+   ReducedTreeMessenger(TFile *file, std::string name);
+   ReducedTreeMessenger(TTree *tree);
+   bool Initialize(TTree *tree);
+   bool Initialize();
+   bool GetEntry(int iEntry);
+   int GetEntries();
+};
+
+

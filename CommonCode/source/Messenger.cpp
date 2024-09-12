@@ -433,6 +433,8 @@ bool ParticleTreeMessenger::Initialize()
       Tree->SetBranchAddress("D_linearized", &D_linearized);
    if(Tree->GetBranch("passesLEP1TwoPC") != nullptr)
       Tree->SetBranchAddress("passesLEP1TwoPC", &passesLEP1TwoPC);
+   else
+      passesLEP1TwoPC = true;
    if(Tree->GetBranch("ThrustWithReco") != nullptr)
       Tree->SetBranchAddress("ThrustWithReco", &ThrustWithReco);
    if(Tree->GetBranch("TThetaWithReco") != nullptr)
@@ -574,6 +576,75 @@ bool ParticleTreeMessenger::PassBaselineCut()
    return true;
 }
 
+ReducedTreeMessenger::ReducedTreeMessenger()
+{
+   Tree = nullptr;
+   Initialize();
+}
+
+ReducedTreeMessenger::ReducedTreeMessenger(TFile &file, std::string name)
+{
+   Tree = (TTree *)file.Get(name.c_str());
+   Initialize();
+}
+
+ReducedTreeMessenger::ReducedTreeMessenger(TFile *file, std::string name)
+{
+   Tree = (TTree *)file->Get(name.c_str());
+   Initialize();
+}
+
+ReducedTreeMessenger::ReducedTreeMessenger(TTree *tree)
+{
+   Tree = tree;
+   Initialize();
+}
+
+bool ReducedTreeMessenger::Initialize(TTree *tree)
+{
+   Tree = tree;
+   return Initialize();
+}
+
+bool ReducedTreeMessenger::Initialize()
+{
+   if(Tree == nullptr)
+      return false;
+
+   Tree->SetBranchAddress("N",        &N);
+   Tree->SetBranchAddress("Momentum", &Momentum);
+   Tree->SetBranchAddress("Mass",     &Mass);
+   Tree->SetBranchAddress("Theta",    &Theta);
+   Tree->SetBranchAddress("Phi",      &Phi);
+   Tree->SetBranchAddress("Weight",   &Weight);
+   Tree->SetBranchAddress("Charge",   &Charge);
+   Tree->SetBranchAddress("PassCut",  &PassCut);
+
+   return true;
+}
+
+bool ReducedTreeMessenger::GetEntry(int iEntry)
+{
+   if(Tree == nullptr)
+      return false;
+   if(iEntry < 0)
+      return false;
+   if(iEntry >= GetEntries())
+      return false;
+
+   Tree->GetEntry(iEntry);
+
+   P.resize(N);
+   for(int i = 0; i < N; i++)
+      P[i].SetSizeThetaPhiMass(Momentum[i], Theta[i], Phi[i], Mass[i]);
+}
+
+int ReducedTreeMessenger::GetEntries()
+{
+   if(Tree == nullptr)
+      return 0;
+   return Tree->GetEntries();
+}
 
 
 

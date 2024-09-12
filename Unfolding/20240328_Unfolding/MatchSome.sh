@@ -1,6 +1,6 @@
 #!/bin/bash
 
-mkdir -p Samples/ALEPHMCChargeMatchMetricTest
+mkdir -p Samples/ALEPHMCHungarian
 
 for i in Samples/ALEPHMC/*
 do
@@ -8,6 +8,6 @@ do
    echo Processing file \"$i\"...
    echo
 
-	./Execute --Input "${i}" --Output "${i/ALEPHMC/ALEPHMCChargeMatchMetricTest}" \
-		--Gen tgen --Reco t --Fraction 1.0
+	./Execute --Input "${i}" --Output "${i/ALEPHMC/ALEPHMCHungarian}" \
+		--Gen tgen --Reco t --Fraction 0.01
 done
