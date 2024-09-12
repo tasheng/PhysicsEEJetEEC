@@ -49,7 +49,7 @@ TH1D* convertHistToUnfoldingFormat(TH1D* inHist){
 
 void createUnfoldingHistograms(){
     // pick up the matched samples
-    char const *infnameMC = "/Users/hannahbossi/ALEPH/PhysicsEEJetEEC/MCCorrection/20240328_Unfolding/Samples/ALEPHMCChargeMatchMetricTest/"; 
+    char const *infnameMC = "Samples/ALEPHMCChargeMatchMetricTest/";
     vector<string> files;
     GetFiles(infnameMC, files);
 
