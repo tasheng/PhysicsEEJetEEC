@@ -49,7 +49,7 @@ TH1D* convertHistToUnfoldingFormat(TH1D* inHist){
 
 void createUnfoldingHistograms(){
     // pick up the matched samples
-    char const *infnameMC = "/Users/hannahbossi/ALEPH/PhysicsEEJetEEC/MCCorrection/20240328_Unfolding/Samples/ALEPHMCChargeMatchMetricTest/"; 
+    char const *infnameMC = "/Users/hannahbossi/ALEPH/PhysicsEEJetEEC/Unfolding/20240328_Unfolding/Samples/ALEPHMCHungarian/"; 
     vector<string> files;
     GetFiles(infnameMC, files);
 
@@ -149,14 +149,6 @@ void createUnfoldingHistograms(){
         for (int iPair = 0; iPair < *nPairs; iPair++) {
             if(RecoE[iPair] < 0 || RecoE2[iPair] < 0) continue; // remove non-matched pairs
             hRecoGenDeltaR->Fill(DistanceReco[iPair], DistanceGen[iPair]);
-
-            // if(DistanceReco[iPair] < 0.5 && DistanceGen[iPair] > 2){
-            //     std::cout << "------ Found a mismatch ------" << std::endl;
-            //     std::cout << "Reco Delta R: " << DistanceReco[iPair] << " Gen Delta R: " << DistanceGen[iPair] << std::endl;
-            //     std::cout << "RecoE: " << RecoE[iPair] << " GenE: " << GenE[iPair] << std::endl;
-            //     std::cout << "Distance Reco Gen Particle 1: " << Distance1[iPair] << " Distance Reco-Gen Particle 2: " << Distance2[iPair] << std::endl;
-            //     std::cout << " ----------------- " << std::endl;
-            // } 
             // get the pT of the reco and gen tracks
             double RecoPt = sqrt(RecoX[iPair]*RecoX[iPair] + RecoY[iPair]*RecoY[iPair] + RecoZ[iPair]*RecoZ[iPair]);
             double GenPt = sqrt(GenX[iPair]*GenX[iPair] + GenY[iPair]*GenY[iPair] + GenZ[iPair]*GenZ[iPair]);
@@ -239,7 +231,6 @@ void createUnfoldingHistograms(){
     // make plot directory
     system("mkdir -p plot");
 
-    std::string tag = "MetricVar1";
 
     TCanvas *c1 = new TCanvas("c1", "c1", 800, 800);
     c1->SetLogz();
