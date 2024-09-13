@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
 
          double Efficiency = 1;
          if(GenLevel == false)
-            efficiencyCorrector.efficiency(M.P[iP].GetTheta(), M.P[iP].GetPhi(), M.P[iP].GetPT(), M.nChargedHadronsHP);
+            Efficiency = efficiencyCorrector.efficiency(M.P[iP].GetTheta(), M.P[iP].GetPhi(), M.P[iP].GetPT(), M.nChargedHadronsHP);
 
          Momentum[N] = M.P[iP].GetP();
          Mass[N]     = M.P[iP].GetMass();
