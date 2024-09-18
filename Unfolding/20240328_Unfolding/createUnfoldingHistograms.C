@@ -1,7 +1,32 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <map>
+using namespace std;
+
 #include "TRandom3.h"
 
+#include "TDirectory.h"
+#include "TSystemDirectory.h"
+#include "TFile.h"
+#include "TSystemFile.h"
 
-void GetFiles(char const *input, vector<string> &files) {
+#include "TMath.h"
+#include "TTree.h"
+#include "TChain.h"
+#include "TTreeReader.h"
+#include "TTreeReaderValue.h"
+#include "TTreeReaderArray.h"
+
+#include "TCanvas.h"
+#include "TH1D.h"
+#include "TH2D.h"
+#include "TStyle.h"
+#include "TLatex.h"
+#include "TLegend.h"
+
+void GetFiles(char const *input, vector<string> &files,
+              string filenamePattern=".root") {
   TSystemDirectory dir(input, input);
   TList *list = dir.GetListOfFiles();
 
@@ -16,7 +41,7 @@ void GetFiles(char const *input, vector<string> &files) {
       if (file->IsDirectory() && (fname.find(".") == string::npos)) {
         string newDir = string(input) + fname + "/";
         GetFiles(newDir.c_str(), files);
-      } else if ((fname.find(".root") != string::npos)) {
+      } else if ((fname.find(filenamePattern.c_str()) != string::npos)) {
         // continue if the filename is .root_hist
         if (fname.find("_hist") != string::npos) continue;
         files.push_back(string(input) + fname);
@@ -47,11 +72,10 @@ TH1D* convertHistToUnfoldingFormat(TH1D* inHist){
     return outHist;
 }
 
-void createUnfoldingHistograms(){
+void createUnfoldingHistograms(char const *infnameMCDir){
     // pick up the matched samples
-    char const *infnameMC = "Samples/ALEPHMCChargeMatchMetricTest/";
     vector<string> files;
-    GetFiles(infnameMC, files);
+    GetFiles(infnameMCDir, files, "_Matched.root");
 
     TChain pairChain("PairTree");
     FillChain(pairChain, files);
@@ -209,7 +233,7 @@ void createUnfoldingHistograms(){
     gStyle->SetOptStat(0);
     gStyle->SetOptTitle(0);
 
-    TFile* unfoldingRootFile = new TFile("unfoldingHistograms.root", "RECREATE");
+    TFile* unfoldingRootFile = new TFile(Form("%s/unfoldingHistograms.root",infnameMCDir), "RECREATE");
     unfoldingRootFile->cd();
     hTrackPtSmeared->Write();
     hTrackPtGen->Write();
@@ -237,7 +261,7 @@ void createUnfoldingHistograms(){
     unfoldingRootFile->Close();
 
     // make plot directory
-    system("mkdir -p plot");
+    system(Form("mkdir -p %s/plot", infnameMCDir));
 
     std::string tag = "MetricVar1";
 
@@ -248,7 +272,11 @@ void createUnfoldingHistograms(){
     hRecoGenDeltaR->SetXTitle("#Delta#it{R}_{reco}");
     hRecoGenDeltaR->SetYTitle("#Delta#it{R}_{gen}");
     hRecoGenDeltaR->Draw("colz");
-    c1->SaveAs(Form("plot/RecoGenDeltaR_%s.pdf", tag.c_str()));
+    c1->SaveAs(Form("%s/plot/RecoGenDeltaR_%s.pdf", infnameMCDir, tag.c_str()));
+
+    c1->SetLogz(false);
+    hRecoGenDeltaR->Draw("colz");
+    c1->SaveAs(Form("%s/plot/RecoGenDeltaR_%s_linear.pdf", infnameMCDir, tag.c_str()));
 
     TCanvas *c2 = new TCanvas("c2", "c2", 800, 800);
     c2->SetLogz();
@@ -257,7 +285,7 @@ void createUnfoldingHistograms(){
     hRecoGenTrackPt->SetYTitle("#it{p}_{T, gen} (GeV/#it{c})");
     hRecoGenTrackPt->Draw("colz");
     c2->SetRightMargin(0.15);
-    c2->SaveAs(Form("plot/RecoGenTrackPt_%s.pdf", tag.c_str()));
+    c2->SaveAs(Form("%s/plot/RecoGenTrackPt_%s.pdf", infnameMCDir, tag.c_str()));
 
     TCanvas *c3 = new TCanvas("c3", "c3", 800, 800);
     c3->SetLogz();
@@ -266,7 +294,7 @@ void createUnfoldingHistograms(){
     hRecoGenEnergyWeighting->SetXTitle("#it{E}_{1}#it{E}_{2} reco");
     hRecoGenEnergyWeighting->SetYTitle("#it{E}_{1}#it{E}_{2} gen");
     hRecoGenEnergyWeighting->Draw("colz");
-    c3->SaveAs(Form("plot/RecoGenEnergyWeighting_%s.pdf", tag.c_str()));
+    c3->SaveAs(Form("%s/plot/RecoGenEnergyWeighting_%s.pdf", infnameMCDir, tag.c_str()));
 
     TCanvas *c4 = new TCanvas("c4", "c4", 800, 800);
     c4->SetLogz();
@@ -276,7 +304,7 @@ void createUnfoldingHistograms(){
     hRecoGenTrackE->SetXTitle("#it{E}_{reco} (GeV)");
     hRecoGenTrackE->SetYTitle("#it{E}_{gen} (GeV)");
     hRecoGenTrackE->Draw("colz");
-    c4->SaveAs(Form("plot/RecoGenTrackE_%s.pdf", tag.c_str()));
+    c4->SaveAs(Form("%s/plot/RecoGenTrackE_%s.pdf", infnameMCDir, tag.c_str()));
 
     TCanvas *c5 = new TCanvas("c5", "c5", 800, 800);
     c5->SetRightMargin(0.05);
@@ -289,6 +317,7 @@ void createUnfoldingHistograms(){
     hDeltaDeltaR->Scale(1./hDeltaDeltaR->Integral(), "width");
     hDeltaDeltaR->SetXTitle("#Delta#it{R}_{reco} - #Delta#it{R}_{gen}");
     hDeltaDeltaR->SetYTitle("Probability");
+    hDeltaDeltaR->GetYaxis()->SetRangeUser(1e-5,20);
     hDeltaDeltaR->Draw();
 
     hDelta1->SetLineColor(kRed);
@@ -319,7 +348,7 @@ void createUnfoldingHistograms(){
     leg->AddEntry(hDelta3, "#Delta#it{R}_{gen} > 1.0", "lp");
     leg->Draw();
 
-    c5->SaveAs(Form("plot/DeltaDeltaR_%s.pdf", tag.c_str()));
+    c5->SaveAs(Form("%s/plot/DeltaDeltaR_%s.pdf", infnameMCDir, tag.c_str()));
 
   // draw the single track distribution
   TCanvas *c6 = new TCanvas("c6", "c6", 800, 800);
@@ -330,7 +359,7 @@ void createUnfoldingHistograms(){
   singleTrackGenERecoE->SetXTitle("Reco E (GeV)");
   singleTrackGenERecoE->SetYTitle("Gen E (GeV)");
   singleTrackGenERecoE->Draw("colz");
-  c6->SaveAs(Form("plot/singleTrackGenERecoE_%s.pdf", tag.c_str()));
+  c6->SaveAs(Form("%s/plot/singleTrackGenERecoE_%s.pdf", infnameMCDir, tag.c_str()));
 
   // draw teh single track matching distance
   TCanvas *c7 = new TCanvas("c7", "c7", 800, 800);
@@ -341,7 +370,7 @@ void createUnfoldingHistograms(){
   singleTrackMatchingDistance->SetXTitle("Matching Distance");
   singleTrackMatchingDistance->SetYTitle("Probability");
   singleTrackMatchingDistance->Draw();
-  c7->SaveAs(Form("plot/singleTrackMatchingDistance_%s.pdf", tag.c_str()));
+  c7->SaveAs(Form("%s/plot/singleTrackMatchingDistance_%s.pdf", infnameMCDir, tag.c_str()));
   
 
 
@@ -361,9 +390,51 @@ void createUnfoldingHistograms(){
       }
    }
 
+    delete hRecoGenDeltaR;
+    delete hRecoGenTrackPt;
+    delete hRecoGenTrackE;
+    delete hRecoGenEnergyWeighting;
+    delete hDeltaDeltaR;
+    delete hDelta1;
+    delete hDelta2;
+    delete hDelta3;
+    delete singleTrackGenERecoE;
+    delete singleTrackMatchingDistance;
+    delete singleTrackMatchingDistanceVsEta;
+    delete hTrackPtSmeared;
+    delete hTrackPtGen;
+    delete hTrackPtResp;
+    delete hTrackPtSmeared_SplitMC;
+    delete hTrackPtGen_SplitMC;
+    delete hTrackPtResp_SplitMC;
+    delete hDeltaRSmeared;
+    delete hDeltaRGen;
+    delete hDeltaRResp;
+    delete hDeltaRSmeared_SplitMC;
+    delete hDeltaRGen_SplitMC;
+    delete hDeltaRResp_SplitMC;
+    delete hE1E2Smeared;
+    delete hE1E2Gen;
+    delete hE1E2Resp;
+    delete hE1E2Smeared_SplitMC;
+    delete hE1E2Gen_SplitMC;
+    delete hE1E2Resp_SplitMC;
+    delete rand;
+    delete unfoldingRootFile;
+    delete c1;
+    delete c2;
+    delete c3;
+    delete c4;
+    delete c5;
+    delete leg;
+    delete c6;
+    delete c7;
+}
 
-
-
-
-
+int main(int argc, char *argv[])
+{
+    createUnfoldingHistograms("matchingScheme1/");
+    createUnfoldingHistograms("matchingScheme2/");
+    createUnfoldingHistograms("matchingScheme3/");
+    createUnfoldingHistograms("matchingScheme4/");
 }
