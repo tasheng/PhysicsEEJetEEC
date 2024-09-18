@@ -26,7 +26,7 @@ using namespace std;
 
 #define MAX 1000
 #define MAXPAIR 10000
-#define MATCHINGSCHEMECHOICE 4
+#define MATCHINGSCHEMECHOICE 2
 
 int main(int argc, char *argv[]);
 double MetricAngle(FourVector A, FourVector B);
@@ -864,7 +864,7 @@ void MatchingPerformance(string& matchedRstRootName, string& rstDirName,
 
       system(Form("mkdir -p %s/plot/", rstDirName.c_str()));
       c->SaveAs(Form("%s/plot/%s.pdf", rstDirName.c_str(), h.GetName()));
-      system(Form("dropbox_uploader.sh upload %s/plot/%s.pdf /tmp/", rstDirName.c_str(), h.GetName()));
+      // system(Form("dropbox_uploader.sh upload %s/plot/%s.pdf /tmp/", rstDirName.c_str(), h.GetName()));
       delete c;
    };
 
