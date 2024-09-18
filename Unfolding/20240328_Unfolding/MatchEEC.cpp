@@ -26,10 +26,12 @@ using namespace std;
 
 #define MAX 1000
 #define MAXPAIR 10000
-#define MATCHINGSCHEMECHOICE 2
 
 int main(int argc, char *argv[]);
 double MetricAngle(FourVector A, FourVector B);
+
+// [Warning] A global variable used in *this* cpp script! //
+int MatchingSchemeChoice = 2;
 double MatchingMetricCore( double deltaTheta, double deltaPhi, double deltaE,
                            double meanE,     // the average btw the GenE and RecoE,
                                              // this would be used to model the energy-dependency in the resolution assignment
@@ -53,18 +55,20 @@ int main(int argc, char *argv[])
    string RecoTreeName   = CL.Get("Reco", "t");
    string OutputFileName = CL.Get("Output");
    double Fraction       = CL.GetDouble("Fraction", 1.00);
+   // [Warning] A global variable used in *this* cpp script! //
+   MatchingSchemeChoice  = CL.GetInt("MatchingSchemeChoice", 2);
 
-   if (MATCHINGSCHEMECHOICE!=1 &&
-       MATCHINGSCHEMECHOICE!=2 &&
-       MATCHINGSCHEMECHOICE!=3 &&
-       MATCHINGSCHEMECHOICE!=4 ) 
+   if (MatchingSchemeChoice!=1 &&
+       MatchingSchemeChoice!=2 &&
+       MatchingSchemeChoice!=3 &&
+       MatchingSchemeChoice!=4 ) 
    {
-      printf("MATCHINGSCHEMECHOICE %d not supported. Exiting\n", MATCHINGSCHEMECHOICE);
+      printf("MatchingSchemeChoice %d not supported. Exiting\n", MatchingSchemeChoice);
       exit(1);
    }
-   string rstDirName     = (MATCHINGSCHEMECHOICE==1)? "matchingScheme1/":
-                           (MATCHINGSCHEMECHOICE==2)? "matchingScheme2/":
-                           (MATCHINGSCHEMECHOICE==3)? "matchingScheme3/": "matchingScheme4/";
+   string rstDirName     = (MatchingSchemeChoice==1)? "matchingScheme1/":
+                           (MatchingSchemeChoice==2)? "matchingScheme2/":
+                           (MatchingSchemeChoice==3)? "matchingScheme3/": "matchingScheme4/";
    system(("mkdir -p "+rstDirName).c_str());
    OutputFileName = rstDirName + OutputFileName;
 
@@ -577,7 +581,7 @@ double MatchingMetric(FourVector A, FourVector B){
 
    double _chiTheta, _chiPhi, _chiE;
    double chi2metric = MatchingMetricCore( Angle, dPhi, Ediff,
-                                           meanE, MATCHINGSCHEMECHOICE,
+                                           meanE, MatchingSchemeChoice,
                                            _chiTheta, _chiPhi, _chiE);
    return chi2metric; 
 }
@@ -730,7 +734,7 @@ void MatchingPerformance(string& matchedRstRootName, string& rstDirName,
          
          double chiTheta, chiPhi, chiE;
          double chi2metric = MatchingMetricCore( deltaTheta, deltaPhi, deltaE,
-                                                 meanE, MATCHINGSCHEMECHOICE,
+                                                 meanE, MatchingSchemeChoice,
                                                  chiTheta, chiPhi, chiE);
 
          trkChiTheta.Fill(chiTheta);
