@@ -1,10 +1,16 @@
 #include <iostream>
 #include <vector>
+#include <string>
 #include <map>
 using namespace std;
 
+#include "TMath.h"
 #include "TTree.h"
+#include "TChain.h"
 #include "TFile.h"
+#include "TTreeReader.h"
+#include "TTreeReaderValue.h"
+#include "TTreeReaderArray.h"
 
 #include "Messenger.h"
 #include "CommandLine.h"
@@ -15,14 +21,30 @@ using namespace std;
 
 #include "TCanvas.h"
 #include "TH1D.h"
+#include "TF1.h"
+#include "TLatex.h"
 
 #define MAX 1000
 #define MAXPAIR 10000
 
 int main(int argc, char *argv[]);
 double MetricAngle(FourVector A, FourVector B);
+
+// [Warning] A global variable used in *this* cpp script! //
+int MatchingSchemeChoice = 2;
+double MatchingMetricCore( double deltaTheta, double deltaPhi, double deltaE,
+                           double meanE,     // the average btw the GenE and RecoE,
+                                             // this would be used to model the energy-dependency in the resolution assignment
+                           int schemeChoice, // 1: 10% energy as resolution, flat theta and phi resolutions
+                                             // 2: resolutions are cast according to ALEPH tracker performance (energy-dependent description)
+                                             // 3: scale btw the importance of angular-match versus energy-match ( 5x)
+                                             // 4: scale btw the importance of angular-match versus energy-match (15x)
+                           double& chiTheta, double& chiPhi, double& chiE);
 double MatchingMetric(FourVector A, FourVector B);
 int FindBin(double Value, int NBins, double Bins[]); 
+void MatchingPerformance(string& matchedRstRoot, string& rstDirName,
+                         ParticleTreeMessenger& MGen,
+                         ParticleTreeMessenger& MReco);
 
 int main(int argc, char *argv[])
 {
@@ -33,6 +55,22 @@ int main(int argc, char *argv[])
    string RecoTreeName   = CL.Get("Reco", "t");
    string OutputFileName = CL.Get("Output");
    double Fraction       = CL.GetDouble("Fraction", 1.00);
+   // [Warning] A global variable used in *this* cpp script! //
+   MatchingSchemeChoice  = CL.GetInt("MatchingSchemeChoice", 2);
+
+   if (MatchingSchemeChoice!=1 &&
+       MatchingSchemeChoice!=2 &&
+       MatchingSchemeChoice!=3 &&
+       MatchingSchemeChoice!=4 ) 
+   {
+      printf("MatchingSchemeChoice %d not supported. Exiting\n", MatchingSchemeChoice);
+      exit(1);
+   }
+   string rstDirName     = (MatchingSchemeChoice==1)? "matchingScheme1/":
+                           (MatchingSchemeChoice==2)? "matchingScheme2/":
+                           (MatchingSchemeChoice==3)? "matchingScheme3/": "matchingScheme4/";
+   system(("mkdir -p "+rstDirName).c_str());
+   OutputFileName = rstDirName + OutputFileName;
 
    TFile InputFile(InputFileName.c_str());
    TFile OutputFile(OutputFileName.c_str(), "RECREATE");
@@ -40,7 +78,6 @@ int main(int argc, char *argv[])
    //------------------------------------
    // define the binning
    //------------------------------------
-
 
    // theta binning
    const int BinCount = 100;
@@ -476,7 +513,9 @@ int main(int argc, char *argv[])
 
    // write the output files
    OutputFile.Close();
+   MatchingPerformance(OutputFileName, rstDirName, MGen, MReco);
    InputFile.Close();
+
 
    return 0;
 }
@@ -488,15 +527,62 @@ double MetricAngle(FourVector A, FourVector B)
    return Angle; 
 }
 
+// core function to calculate the chisquare(theta,phi,E) based on different assignments of resolutions
+double MatchingMetricCore( double deltaTheta, double deltaPhi, double deltaE,
+                           double meanE,     // the average btw the GenE and RecoE,
+                                             // this would be used to model the energy-dependency in the resolution assignment
+                           int schemeChoice, // 1: 10% energy as resolution, flat theta and phi resolutions
+                                             // 2: resolutions are cast according to ALEPH tracker performance (energy-dependent description)
+                                             // 3: scale btw the importance of angular-match versus energy-match ( 5x)
+                                             // 4: scale btw the importance of angular-match versus energy-match (15x)
+                           double& chiTheta, double& chiPhi, double& chiE)
+{
+   if (schemeChoice==1)
+   {
+      double phiRes  = 0.002; // somewhere in the ballpark of 0.002-0.005
+      double Eres    = 0.1*meanE; // use 10% energy resolution //0.85/sqrt(meanE); // take energy resolution based on the mean energy
+      double AngleRes= (0.01*0.01); // take angular resolution based on the detector resolution
+      chiTheta       = deltaTheta/AngleRes;
+      chiPhi         = deltaPhi  /phiRes;
+      chiE           = deltaE    /Eres;
+   }
+   else if (schemeChoice==2 || schemeChoice==3 || schemeChoice==4)
+   {
+      double scaleFactorTheta = 2.8; // sigma(rz)   = 28 µm
+      double scaleFactorPhi   = 2.3; // sigma(rphi) = 23 µm
+      double scaleFactorE     = (schemeChoice==2)? 1: 
+                                (schemeChoice==3)? 5: 15;
+      double sigmaDelta = 25e-6 + 95e-6 / meanE;
+      double sigmaTheta = sigmaDelta / 6e-2     // inner vertex detector radius
+                        * scaleFactorTheta;     // considering the projection (average) of minimal distance to the r-z
+      double sigmaPhi   = sigmaDelta / 6e-2     // inner vertex detector radius 
+                        * scaleFactorPhi;       // considering the projection (average) of minimal distance to the r-z
+      double sigmaE = TMath::Sqrt( (6e-4*meanE)*(6e-4*meanE) + 0.005 * 0.005 ) * meanE 
+                        * scaleFactorE;
+      chiTheta       = deltaTheta/sigmaTheta;
+      chiPhi         = deltaPhi  /sigmaPhi;
+      chiE           = deltaE    /sigmaE;
+   }
+   else
+   {
+      printf("[Error] schemeChoice %d is not supported in MatchingMetricCore. Please choose a number btw 1-4. Exiting...\n", schemeChoice);
+      exit(1);
+   }
+   
+   double chi2metric = chiTheta*chiTheta + chiPhi*chiPhi + chiE*chiE;
+   return (chi2metric);
+}
+
 double MatchingMetric(FourVector A, FourVector B){
    double Angle = GetAngle(A,B);
    double dPhi = GetDPhi(A,B); 
-   double Ediff = (A[0] - B[0]); 
+   double Ediff = (A[0] - B[0]);
    double meanE = (A[0] + B[0])/2;  
-   double phiRes = 0.002; // somewhere in the ballpark of 0.002-0.005
-   double Eres = 0.1*meanE; // use 10% energy resolution //0.85/sqrt(meanE); // take energy resolution based on the mean energy
-   double AngleRes = (0.01*0.01); // take angular resolution based on the detector resolution
-   double chi2metric = (Angle/AngleRes)*(Angle/AngleRes)  + (dPhi/phiRes)*(dPhi/phiRes) + (Ediff/Eres)*(Ediff/Eres);
+
+   double _chiTheta, _chiPhi, _chiE;
+   double chi2metric = MatchingMetricCore( Angle, dPhi, Ediff,
+                                           meanE, MatchingSchemeChoice,
+                                           _chiTheta, _chiPhi, _chiE);
    return chi2metric; 
 }
 
@@ -507,4 +593,313 @@ int FindBin(double Value, int NBins, double Bins[])
       if(Value < Bins[i])
          return i - 1;
    return NBins;
+}
+
+// can we put this in the CommonCode/ ?
+void FillChain(TChain &chain, const vector<string> &files) {
+  for (auto file : files) {
+    chain.Add(file.c_str());
+  }
+}
+
+// Matching criteria performance check
+void MatchingPerformance(string& matchedRstRootName, string& rstDirName,
+                         ParticleTreeMessenger& MGen,
+                         ParticleTreeMessenger& MReco)
+{
+   //------------------------------------
+   // Single-track level
+   //------------------------------------
+   TChain particleChain("MatchedTree");
+   FillChain(particleChain, {matchedRstRootName});
+   TTreeReader particleReader(&particleChain);
+
+   TTreeReaderValue<int> nParticles(   particleReader, "NParticle");
+   TTreeReaderArray<double> GenE(      particleReader, "GenE");
+   TTreeReaderArray<double> GenX(      particleReader, "GenX");
+   TTreeReaderArray<double> GenY(      particleReader, "GenY");
+   TTreeReaderArray<double> GenZ(      particleReader, "GenZ");
+   TTreeReaderArray<double> GenTheta(  particleReader, "GenTheta");
+   TTreeReaderArray<double> GenPhi(    particleReader, "GenPhi");
+   TTreeReaderArray<double> RecoE(     particleReader, "RecoE");
+   TTreeReaderArray<double> RecoX(     particleReader, "RecoX");
+   TTreeReaderArray<double> RecoY(     particleReader, "RecoY");
+   TTreeReaderArray<double> RecoZ(     particleReader, "RecoZ");
+   TTreeReaderArray<double> RecoTheta( particleReader, "RecoTheta");
+   TTreeReaderArray<double> RecoPhi(   particleReader, "RecoPhi");
+   TTreeReaderArray<double> Distance(  particleReader, "Distance");
+
+   //------------------------------------
+   // define the histograms
+   //------------------------------------
+   string PerformanceFileName(matchedRstRootName);
+   PerformanceFileName.replace(PerformanceFileName.find(".root"), 5, "_performance.root");
+   TFile PerformanceFile(PerformanceFileName.c_str(), "RECREATE");
+   
+   PerformanceFile.cd();
+
+   TH1D trkChi2Tot    ("trkChi2Tot",    "trkChi2Tot",  50, -5, 5);
+   TH1D trkChiTheta   ("trkChiTheta",  "trkChiTheta",50, -5, 5);
+   TH1D trkChiPhi     ("trkChiPhi",    "trkChiPhi",  50, -5, 5);
+   TH1D trkChiE       ("trkChiE",      "trkChiE",    50, -5, 5);
+   TH1D trkDeltaTheta ("trkDeltaTheta",  "trkDeltaTheta",50, -4, 4);
+   TH1D trkDeltaPhi   ("trkDeltaPhi",    "trkDeltaPhi",  50, -4, 4);
+   TH1D trkDeltaE     ("trkDeltaE",      "trkDeltaE",    50, -10, 10);
+   TH1D trkDeltaP     ("trkDeltaP",      "trkDeltaP",    50, -10, 10);
+   TH1D trkDeltaTheta_ge5 ("trkDeltaTheta_ge5",  "trkDeltaTheta (E>5GeV)",50, -4, 4);
+   TH1D trkDeltaPhi_ge5   ("trkDeltaPhi_ge5",    "trkDeltaPhi (E>5GeV)",  50, -4, 4);
+   TH1D trkDeltaE_ge5     ("trkDeltaE_ge5",      "trkDeltaE (E>5GeV)",    50, -10, 10);
+   TH1D trkDeltaP_ge5     ("trkDeltaP_ge5",      "trkDeltaP (E>5GeV)",    50, -10, 10);
+   TH1D trkDeltaTheta_2to5 ("trkDeltaTheta_2to5",  "trkDeltaTheta (2<E<5GeV)",50, -4, 4);
+   TH1D trkDeltaPhi_2to5   ("trkDeltaPhi_2to5",    "trkDeltaPhi (2<E<5GeV)",  50, -4, 4);
+   TH1D trkDeltaE_2to5     ("trkDeltaE_2to5",      "trkDeltaE (2<E<5GeV)",    50, -10, 10);
+   TH1D trkDeltaP_2to5     ("trkDeltaP_2to5",      "trkDeltaP (2<E<5GeV)",    50, -10, 10);
+   TH1D trkDeltaTheta_1to2 ("trkDeltaTheta_1to2",  "trkDeltaTheta (1<E<2GeV)",50, -4, 4);
+   TH1D trkDeltaPhi_1to2   ("trkDeltaPhi_1to2",    "trkDeltaPhi (1<E<2GeV)",  50, -4, 4);
+   TH1D trkDeltaE_1to2     ("trkDeltaE_1to2",      "trkDeltaE (1<E<2GeV)",    50, -10, 10);
+   TH1D trkDeltaP_1to2     ("trkDeltaP_1to2",      "trkDeltaP (1<E<2GeV)",    50, -10, 10);
+   TH1D trkDeltaTheta_le1 ("trkDeltaTheta_le1",  "trkDeltaTheta (E<1GeV)",50, -4, 4);
+   TH1D trkDeltaPhi_le1   ("trkDeltaPhi_le1",    "trkDeltaPhi (E<1GeV)",  50, -4, 4);
+   TH1D trkDeltaE_le1     ("trkDeltaE_le1",      "trkDeltaE (E<1GeV)",    50, -10, 10);
+   TH1D trkDeltaP_le1     ("trkDeltaP_le1",      "trkDeltaP (E<1GeV)",    50, -10, 10);
+
+   int nGenTracks       = 0;
+   int nRecoTracks      = 0;
+   int nMatchedTracks   = 0;
+   int nUnmatchedTracks = 0;
+   int nMatchedTracks_1p0   = 0;
+   int nUnmatchedTracks_1p0 = 0;
+   int nMatchedTracks_0p4   = 0;
+   int nUnmatchedTracks_0p4 = 0;
+   int nMatchedTracks_0p2   = 0;
+   int nUnmatchedTracks_0p2 = 0;
+   int nMatchedTracks_0p1   = 0;
+   int nUnmatchedTracks_0p1 = 0;
+   Long64_t totEvents = particleReader.GetEntries(true);
+   for (Long64_t iEvent = 0; iEvent < totEvents; iEvent++) 
+   {
+      particleReader.Next();
+
+      int nMatchedTracksInOneEvent = 0;
+      int nMatchedTracksInOneEvent_1p0 = 0;
+      int nMatchedTracksInOneEvent_0p4 = 0;
+      int nMatchedTracksInOneEvent_0p2 = 0;
+      int nMatchedTracksInOneEvent_0p1 = 0;
+      for (int iParticle = 0; iParticle < *nParticles; iParticle++) 
+      {
+         if (RecoE[iParticle]<0 || GenE[iParticle]<0) continue; // remove non-matched pairs
+
+         double deltaTheta = RecoTheta[iParticle]-GenTheta[iParticle];
+         double deltaPhi   = RecoPhi[iParticle]-GenPhi[iParticle];
+         double deltaE     = RecoE[iParticle]-GenE[iParticle];
+         double deltaP     = TMath::Sqrt(RecoX[iParticle]*RecoX[iParticle]+RecoY[iParticle]*RecoY[iParticle]+RecoZ[iParticle]*RecoZ[iParticle])-
+                             TMath::Sqrt(GenX[iParticle]*GenX[iParticle]+GenY[iParticle]*GenY[iParticle]+GenZ[iParticle]*GenZ[iParticle]);
+
+         trkChi2Tot.Fill(Distance[iParticle]);
+         trkDeltaTheta.Fill(deltaTheta);
+         trkDeltaPhi.Fill(deltaPhi);
+         trkDeltaE.Fill(deltaE);
+         trkDeltaP.Fill(deltaP);
+
+         if (RecoE[iParticle] >= 5) 
+         {
+            trkDeltaTheta_ge5.Fill(deltaTheta);
+            trkDeltaPhi_ge5.Fill(deltaPhi);
+            trkDeltaE_ge5.Fill(deltaE);
+            trkDeltaP_ge5.Fill(deltaP);
+         } 
+         else if (2 <= RecoE[iParticle] && RecoE[iParticle] < 5) 
+         {
+            trkDeltaTheta_2to5.Fill(deltaTheta);
+            trkDeltaPhi_2to5.Fill(deltaPhi);
+            trkDeltaE_2to5.Fill(deltaE);
+            trkDeltaP_2to5.Fill(deltaP);
+         }
+         else if (1 <= RecoE[iParticle] && RecoE[iParticle] < 2) 
+         {
+            trkDeltaTheta_1to2.Fill(deltaTheta);
+            trkDeltaPhi_1to2.Fill(deltaPhi);
+            trkDeltaE_1to2.Fill(deltaE);
+            trkDeltaP_1to2.Fill(deltaP);
+         }
+         else // recoE < 1
+         {
+            trkDeltaTheta_le1.Fill(deltaTheta);
+            trkDeltaPhi_le1.Fill(deltaPhi);
+            trkDeltaE_le1.Fill(deltaE);
+            trkDeltaP_le1.Fill(deltaP);
+         }
+
+         double meanE = (RecoE[iParticle] + GenE[iParticle])/2;  
+         
+         double chiTheta, chiPhi, chiE;
+         double chi2metric = MatchingMetricCore( deltaTheta, deltaPhi, deltaE,
+                                                 meanE, MatchingSchemeChoice,
+                                                 chiTheta, chiPhi, chiE);
+
+         trkChiTheta.Fill(chiTheta);
+         trkChiPhi.Fill(chiPhi);
+         trkChiE.Fill(chiE);
+
+         nMatchedTracksInOneEvent++;
+         if (Distance[iParticle]<=1.0) nMatchedTracksInOneEvent_1p0++;
+         if (Distance[iParticle]<=0.4) nMatchedTracksInOneEvent_0p4++;
+         if (Distance[iParticle]<=0.2) nMatchedTracksInOneEvent_0p2++;
+         if (Distance[iParticle]<=0.1) nMatchedTracksInOneEvent_0p1++;
+      }
+
+      MGen.GetEntry(iEvent);
+      MReco.GetEntry(iEvent);
+
+      // printf("%d %d %d %d %d %d\n", MGen.nParticle, MGen.nChargedHadronsHP, MReco.nParticle, MReco.nChargedHadronsHP, (*nParticles), nMatchedTracksInOneEvent);
+      nGenTracks       += MGen.nChargedHadronsHP;
+      nRecoTracks      += MReco.nChargedHadronsHP;
+      nMatchedTracks   += nMatchedTracksInOneEvent;
+      nUnmatchedTracks += (MReco.nChargedHadronsHP-nMatchedTracksInOneEvent);
+      nMatchedTracks_1p0   += nMatchedTracksInOneEvent_1p0;
+      nUnmatchedTracks_1p0 += (MReco.nChargedHadronsHP-nMatchedTracksInOneEvent_1p0);
+      nMatchedTracks_0p4   += nMatchedTracksInOneEvent_0p4;
+      nUnmatchedTracks_0p4 += (MReco.nChargedHadronsHP-nMatchedTracksInOneEvent_0p4);
+      nMatchedTracks_0p2   += nMatchedTracksInOneEvent_0p2;
+      nUnmatchedTracks_0p2 += (MReco.nChargedHadronsHP-nMatchedTracksInOneEvent_0p2);
+      nMatchedTracks_0p1   += nMatchedTracksInOneEvent_0p1;
+      nUnmatchedTracks_0p1 += (MReco.nChargedHadronsHP-nMatchedTracksInOneEvent_0p1);
+
+   } // end loop over the number of events
+
+   printf("Summary >>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
+   printf("Efficiency = %d/%d = %.3f\n", nMatchedTracks, nGenTracks, nMatchedTracks/((double) nGenTracks));
+   printf("Fake rate  = %d/%d = %.3f\n", nUnmatchedTracks, nRecoTracks, nUnmatchedTracks/((double) nRecoTracks));
+   printf("Efficiency = %d/%d = %.3f | cutoff = 1.0\n", nMatchedTracks_1p0, nGenTracks, nMatchedTracks_1p0/((double) nGenTracks));
+   printf("Fake rate  = %d/%d = %.3f | cutoff = 1.0\n", nUnmatchedTracks_1p0, nRecoTracks, nUnmatchedTracks_1p0/((double) nRecoTracks));
+   printf("Efficiency = %d/%d = %.3f | cutoff = 0.4\n", nMatchedTracks_0p4, nGenTracks, nMatchedTracks_0p4/((double) nGenTracks));
+   printf("Fake rate  = %d/%d = %.3f | cutoff = 0.4\n", nUnmatchedTracks_0p4, nRecoTracks, nUnmatchedTracks_0p4/((double) nRecoTracks));
+   printf("Efficiency = %d/%d = %.3f | cutoff = 0.2\n", nMatchedTracks_0p2, nGenTracks, nMatchedTracks_0p2/((double) nGenTracks));
+   printf("Fake rate  = %d/%d = %.3f | cutoff = 0.2\n", nUnmatchedTracks_0p2, nRecoTracks, nUnmatchedTracks_0p2/((double) nRecoTracks));
+   printf("Efficiency = %d/%d = %.3f | cutoff = 0.1\n", nMatchedTracks_0p1, nGenTracks, nMatchedTracks_0p1/((double) nGenTracks));
+   printf("Fake rate  = %d/%d = %.3f | cutoff = 0.1\n", nUnmatchedTracks_0p1, nRecoTracks, nUnmatchedTracks_0p1/((double) nRecoTracks));
+   printf("End Summary <<<<<<<<<<<<<<<<<<<<<<<<<\n");
+
+   trkChi2Tot.Write();
+   trkChiTheta.Write();
+   trkChiPhi.Write();
+   trkChiE.Write();
+   trkDeltaTheta.Write();
+   trkDeltaPhi.Write();
+   trkDeltaE.Write();
+   trkDeltaP.Write();
+   trkDeltaTheta_ge5.Write();
+   trkDeltaPhi_ge5.Write();
+   trkDeltaE_ge5.Write();
+   trkDeltaP_ge5.Write();
+   trkDeltaTheta_2to5.Write();
+   trkDeltaPhi_2to5.Write();
+   trkDeltaE_2to5.Write();
+   trkDeltaP_2to5.Write();
+   trkDeltaTheta_1to2.Write();
+   trkDeltaPhi_1to2.Write();
+   trkDeltaE_1to2.Write();
+   trkDeltaP_1to2.Write();
+   trkDeltaTheta_le1.Write();
+   trkDeltaPhi_le1.Write();
+   trkDeltaE_le1.Write();
+   trkDeltaP_le1.Write();
+
+   auto plotResolution = [](TH1D& h, string rstDirName, 
+                            bool doFit=true, bool logy=false)
+   { 
+      TCanvas *c = new TCanvas("c", "", 600, 600);
+      gPad->SetLeftMargin(0.13);
+      gPad->SetRightMargin(0.05);
+
+      TF1 f("f","[p0]/sqrt(2*pi)/[p2]*exp(-0.5*((x-[p1])/[p2])*((x-[p1])/[p2]))+[p3]/sqrt(2*pi)/[p4]*exp(-0.5*((x-[p1])/[p4])*((x-[p1])/[p4]))",-5,5);
+      double hIntegral = h.Integral(h.GetXaxis()->FindBin(-5+0.001),
+                                    h.GetXaxis()->FindBin( 5-0.001)) * h.GetXaxis()->GetBinWidth(1);
+      f.SetParameters(hIntegral*0.7, 
+                      0, 
+                      1,
+                      hIntegral*0.3,
+                      2.5);
+      f.SetParLimits(0, hIntegral*0.5, hIntegral*1.);
+      f.SetParLimits(2, 0.01, 1.5);
+      f.SetParLimits(3, 0, hIntegral*0.5);
+      f.SetParLimits(4, 1.5, 5);
+
+      h.GetYaxis()->SetRangeUser((logy)? 7e-1: 0, h.GetMaximum()*1.6);
+      h.Draw();
+
+      if (logy) gPad->SetLogy();
+
+      if (doFit)
+      {
+         h.Fit("f","RSLM");
+
+         TLatex latex;
+         latex.SetNDC();  // Use normalized coordinates [0,1] for positioning
+         latex.SetTextSize(0.04);
+
+         // Write the fit parameters on the canvas
+         latex.DrawLatex(0.15, 0.85, Form("Ampl. 1st Gaus = %.2f #pm %.2f", f.GetParameter(0), f.GetParError(0)));
+         latex.DrawLatex(0.15, 0.80, Form("Mean Double Gaus = %.2f #pm %.2f", f.GetParameter(1), f.GetParError(1)));
+         latex.DrawLatex(0.15, 0.75, Form("Width 1st Gaus = %.2f #pm %.2f", f.GetParameter(2), f.GetParError(2)));
+         latex.DrawLatex(0.15, 0.70, Form("Ampl. 2nd Gaus = %.2f #pm %.2f", f.GetParameter(3), f.GetParError(3)));
+         latex.DrawLatex(0.15, 0.65, Form("Width 2nd Gaus = %.2f #pm %.2f", f.GetParameter(4), f.GetParError(4)));
+         latex.DrawLatex(0.15, 0.60, Form("(Total normalization = %.2f)", hIntegral));
+
+         TF1 f_sub("f_sub","[p0]/sqrt(2*pi)/[p2]*exp(-0.5*((x-[p1])/[p2])*((x-[p1])/[p2]))+[p3]/sqrt(2*pi)/[p4]*exp(-0.5*((x-[p1])/[p4])*((x-[p1])/[p4]))",-5,5);
+         f_sub.SetParameter(0, f.GetParameter(0));
+         f_sub.SetParameter(1, f.GetParameter(1));
+         f_sub.SetParameter(2, f.GetParameter(2));
+         f_sub.SetParameter(3, 0);
+         f_sub.SetParameter(4, f.GetParameter(4));
+         f_sub.SetLineStyle(2);
+         f_sub.SetLineColor(kRed);
+         f_sub.DrawClone("same");
+
+         f_sub.SetParameter(0, 0);
+         f_sub.SetParameter(1, f.GetParameter(1));
+         f_sub.SetParameter(2, f.GetParameter(2));
+         f_sub.SetParameter(3, f.GetParameter(3));
+         f_sub.SetParameter(4, f.GetParameter(4));
+         f_sub.SetLineStyle(3);
+         f_sub.SetLineColor(kRed);
+         f_sub.DrawClone("same");
+      }
+
+      system(Form("mkdir -p %s/plot/", rstDirName.c_str()));
+      c->SaveAs(Form("%s/plot/%s.pdf", rstDirName.c_str(), h.GetName()));
+      // system(Form("dropbox_uploader.sh upload %s/plot/%s.pdf /tmp/", rstDirName.c_str(), h.GetName()));
+      delete c;
+   };
+
+   plotResolution(trkChiTheta, rstDirName);
+   plotResolution(trkChiPhi, rstDirName);
+   plotResolution(trkChiE, rstDirName);
+
+   plotResolution(trkDeltaTheta, rstDirName, false, true);
+   plotResolution(trkDeltaPhi, rstDirName, false, true);
+   plotResolution(trkDeltaE, rstDirName, false, true);
+   plotResolution(trkDeltaP, rstDirName, false, true);
+
+   plotResolution(trkDeltaTheta_ge5, rstDirName, false, true);
+   plotResolution(trkDeltaPhi_ge5, rstDirName, false, true);
+   plotResolution(trkDeltaE_ge5, rstDirName, false, true);
+   plotResolution(trkDeltaP_ge5, rstDirName, false, true);
+
+   plotResolution(trkDeltaTheta_2to5, rstDirName, false, true);
+   plotResolution(trkDeltaPhi_2to5, rstDirName, false, true);
+   plotResolution(trkDeltaE_2to5, rstDirName, false, true);
+   plotResolution(trkDeltaP_2to5, rstDirName, false, true);
+
+   plotResolution(trkDeltaTheta_1to2, rstDirName, false, true);
+   plotResolution(trkDeltaPhi_1to2, rstDirName, false, true);
+   plotResolution(trkDeltaE_1to2, rstDirName, false, true);
+   plotResolution(trkDeltaP_1to2, rstDirName, false, true);
+
+   plotResolution(trkDeltaTheta_le1, rstDirName, false, true);
+   plotResolution(trkDeltaPhi_le1, rstDirName, false, true);
+   plotResolution(trkDeltaE_le1, rstDirName, false, true);
+   plotResolution(trkDeltaP_le1, rstDirName, false, true);
+
+   PerformanceFile.Close();
 }

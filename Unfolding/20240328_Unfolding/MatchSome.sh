@@ -1,8 +1,8 @@
 #!/bin/bash
 
-mkdir -p Samples/ALEPHMCHungarian
+mkdir -p $ProjectBase/Samples/ALEPHMCHungarian
 
-for i in Samples/ALEPHMC/*
+for i in $ProjectBase/Samples/ALEPHMC/*
 do
    echo
    echo Processing file \"$i\"...
