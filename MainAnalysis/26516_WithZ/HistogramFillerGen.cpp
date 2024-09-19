@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
    // double log binning
    TH1D* genUnmatched_z = new TH1D("genUnmatched_z", "genUnmatched_z", 2 * BinCount, 0, 2 * BinCount);
    ParticleTreeMessenger* MGen = new ParticleTreeMessenger(InputFile, GenTreeName);
-
+   TH1D HN("HN", ";;", 1, 0, 1);
 
    int EntryCount = MGen->GetEntries() * Fraction;
    ProgressBar Bar(cout, EntryCount);
@@ -96,12 +96,14 @@ int main(int argc, char *argv[])
    }
 
    std::cout << "The number of accepted events is " << nAcceptedEvents << std::endl;
+   HN.SetBinContent(1, nAcceptedEvents);
    Bar.Update(EntryCount);
    Bar.Print();
    Bar.PrintLine();
 
    OutputFile->cd();
    genUnmatched_z->Write();
+   HN.Write(); 
    OutputFile->Close();
    InputFile->Close();
 

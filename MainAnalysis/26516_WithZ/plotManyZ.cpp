@@ -92,12 +92,6 @@ int main(int argc, char *argv[]){
 
     int N = FileNames.size();
 
-    // nCharged > 10 749423
-    // data nEvents 610122
-    // currently hard-code the number of events - need to fix this!! 
-    vector<int> nEvents = {771597, 100000, 100000, 100000,  190877,  191125};
-
-
     vector<TFile *> Files(N);
     for(int i = 0; i < N; i++){
       Files[i] = new TFile(FileNames[i].c_str());
@@ -105,11 +99,11 @@ int main(int argc, char *argv[]){
 
     for(int i = 0; i < N; i++){
         TH1D* H = (TH1D*)Files[i]->Get("genUnmatched_z");
-
+        TH1D *HN = (TH1D *)Files[i]->Get("HN");
 
         // divide by the number of events 
         DivideByBin(*H, zBins);
-        H->Scale(1.0 / (nEvents[i]));
+        H->Scale(1.0 /  HN->GetBinContent(1));
 
     
         H->SetMarkerColor(Colors[i]);
