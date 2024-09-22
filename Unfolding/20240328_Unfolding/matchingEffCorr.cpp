@@ -30,8 +30,8 @@ using namespace std;
 
 int main(int argc, char *argv[]);
 int FindBin(double Value, int NBins, double Bins[]); 
-void MakeCanvasZ(vector<TH1D > Histograms, vector<string> Labels, string Output, string X, string Y, double WorldMin, double WorldMax, bool DoRatio, bool LogX); 
-void MakeCanvas(vector<TH1D> Histograms, vector<string> Labels, string Output, string X, string Y, double WorldMin, double WorldMax, bool DoRatio, bool LogX); 
+void MakeCanvasZ(vector<TH1D>& Histograms, vector<string> Labels, string Output, string X, string Y, double WorldMin, double WorldMax, bool DoRatio, bool LogX); 
+void MakeCanvas(vector<TH1D>& Histograms, vector<string> Labels, string Output, string X, string Y, double WorldMin, double WorldMax, bool DoRatio, bool LogX); 
 void SetPad(TPad &P); 
 void DivideByBin(TH1D &H, double Bins[]); 
 
@@ -337,7 +337,7 @@ int FindBin(double Value, int NBins, double Bins[])
    return NBins;
 }
 
-void MakeCanvasZ(vector<TH1D > Histograms, vector<string> Labels, string Output,
+void MakeCanvasZ(vector<TH1D>& Histograms, vector<string> Labels, string Output,
    string X, string Y, double WorldMin, double WorldMax, bool DoRatio, bool LogX){
    
 
@@ -580,7 +580,7 @@ void DivideByBin(TH1D &H, double Bins[])
 }
 
 
-void MakeCanvas(vector<TH1D> Histograms, vector<string> Labels, string Output,
+void MakeCanvas(vector<TH1D>& Histograms, vector<string> Labels, string Output,
    string X, string Y, double WorldMin, double WorldMax, bool DoRatio, bool LogX)
 {
    int NLine = Histograms.size();

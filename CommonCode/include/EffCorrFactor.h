@@ -69,8 +69,8 @@ void EffCorrFactor::write(TFile& OutputFile, string effArgName, TH1D* _h_num, TH
 void EffCorrFactor::write(TFile& OutputFile, string effArgName, TH2D* _h_num, TH2D* _h_den)
 {
    OutputFile.cd();
-   _h_num->SetName(Form("num_%s", effArgName.c_str()));
-   _h_den->SetName(Form("den_%s", effArgName.c_str()));
+   _h_num->SetName(Form("num_%s_normEE", effArgName.c_str()));
+   _h_den->SetName(Form("den_%s_normEE", effArgName.c_str()));
    _heff_2D = (TH2D*) _h_num->Clone(Form("eff_%s_normEE", effArgName.c_str()));
    _heff_2D->Divide(_h_den);
    _h_num->Write();
