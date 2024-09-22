@@ -78,13 +78,13 @@ int main(int argc, char *argv[])
    double zBinMax = 0.5;
 
    // energy binning
-   const int EnergyBinCount = 10; 
-   double EnergyBins[EnergyBinCount+1];
-   double EnergyBinMin = 4e-6;
-   double EnergyBinMax = 0.2;
-   double logMin = std::log10(EnergyBinMin);
-   double logMax = std::log10(EnergyBinMax);
-   double logStep = (logMax - logMin) / (EnergyBinCount);
+   // const int EnergyBinCount = 10; 
+   // double EnergyBins[EnergyBinCount+1];
+   // double EnergyBinMin = 4e-6;
+   // double EnergyBinMax = 0.2;
+   // double logMin = std::log10(EnergyBinMin);
+   // double logMax = std::log10(EnergyBinMax);
+   // double logStep = (logMax - logMin) / (EnergyBinCount);
 
    for(int i = 0; i <= BinCount; i++){
       // theta double log binning
@@ -97,21 +97,23 @@ int main(int argc, char *argv[])
     
    }
 
-   EnergyBins[0] = 0;
-   for(int e = 1; e <= EnergyBinCount; e++){
-      double logValue = logMin + e * logStep;
-      EnergyBins[e] =  std::pow(10, logValue);
-   }
+   // EnergyBins[0] = 0;
+   // for(int e = 1; e <= EnergyBinCount; e++){
+   //    double logValue = logMin + e * logStep;
+   //    EnergyBins[e] =  std::pow(10, logValue);
+   //    printf("%f ", EnergyBins[e]);
+   // }
+   vector<double> EnergyBins = {0.0, 0.0001, 0.0002, 0.0005, 0.00075, 0.001, 0.00125, 0.0015, 0.00175, 0.002, 0.0025, 0.003, 0.004, 0.01, 0.04, 0.07, 0.15, 0.3};
 
    // -------------------------------------------
    // allocate the histograms
    // -------------------------------------------
 
    // 2D histograms
-   TH2D h2_EvtSelBefore_Theta("h2_EvtSelBefore_Theta", "h2_EvtSelBefore_Theta", 2 * BinCount, 0, 2 * BinCount,  EnergyBinCount, EnergyBins);
-   TH2D h2_EvtSelBefore_Z("h2_EvtSelBefore_Z", "h2_EvtSelBefore_Z", 2 * BinCount, 0, 2 * BinCount,  EnergyBinCount, EnergyBins);
-   TH2D h2_EvtSel_Theta("h2_EvtSel_Theta", "h2_EvtSel_Theta", 2 * BinCount, 0, 2 * BinCount,  EnergyBinCount, EnergyBins);
-   TH2D h2_EvtSel_Z("h2_EvtSel_Z", "h2_EvtSel_Z", 2 * BinCount, 0, 2 * BinCount,  EnergyBinCount, EnergyBins);
+   TH2D h2_EvtSelBefore_Theta("h2_EvtSelBefore_Theta", "h2_EvtSelBefore_Theta", 2 * BinCount, 0, 2 * BinCount, EnergyBins.size()-1, EnergyBins.data());
+   TH2D h2_EvtSelBefore_Z("h2_EvtSelBefore_Z", "h2_EvtSelBefore_Z", 2 * BinCount, 0, 2 * BinCount, EnergyBins.size()-1, EnergyBins.data());
+   TH2D h2_EvtSel_Theta("h2_EvtSel_Theta", "h2_EvtSel_Theta", 2 * BinCount, 0, 2 * BinCount, EnergyBins.size()-1, EnergyBins.data());
+   TH2D h2_EvtSel_Z("h2_EvtSel_Z", "h2_EvtSel_Z", 2 * BinCount, 0, 2 * BinCount, EnergyBins.size()-1, EnergyBins.data());
 
    // 1D histograms
    TH1D h1_EvtSel_Z("h1_EvtSel_Z", "h1_EvtSel_Z", 2 * BinCount, 0, 2 * BinCount); 
@@ -165,7 +167,7 @@ int main(int argc, char *argv[])
 
             // get the proper bins
             int BinThetaGen  = FindBin(GetAngle(Gen1,Gen2), 2 * BinCount, Bins);
-            int BinEnergyGen = FindBin(Gen1[0]*Gen2[0]/(TotalE*TotalE), EnergyBinCount, EnergyBins);
+            // int BinEnergyGen = FindBin(Gen1[0]*Gen2[0]/(TotalE*TotalE), EnergyBinCount, EnergyBins);
             double zGen = (1-cos(GetAngle(Gen1,Gen2)))/2; 
             int BinZGen = FindBin(zGen, 2*BinCount, zBins); 
 
@@ -173,14 +175,14 @@ int main(int argc, char *argv[])
             double EEC =  Gen1[0]*Gen2[0]/(TotalE*TotalE); 
             
             // fill the histograms
-            h2_EvtSel_Theta.Fill(BinThetaGen, BinEnergyGen, EEC); 
-            h2_EvtSel_Z.Fill(BinZGen, BinEnergyGen, EEC); 
+            h2_EvtSel_Theta.Fill(BinThetaGen, EEC, EEC); 
+            h2_EvtSel_Z.Fill(BinZGen, EEC, EEC); 
             h1_EvtSel_Z.Fill(BinZGen, EEC); 
             h1_EvtSel_Theta.Fill(BinThetaGen, EEC);
             if (!MakeEvtSelEffCorrFactor)
             {
                double efficiency = EvtSelEffCorrFactor.efficiency((EvtSelEffArgName=="z")? BinZGen: BinThetaGen,
-                                                                    BinEnergyGen);
+                                                                    EEC);
                // printf("argBin: %d, z: %.3f, eff: %.3f \n", BinZGen, zGen, efficiency);
                // printf("argBin: %d, normEEBin:%d, z: %.3f, normEE: %.3f, eff: %.3f \n", BinZGen, BinEnergyGen, zGen, EEC, efficiency);
                h1_EvtSelCorrected_Z.Fill(BinZGen, EEC/efficiency); 
@@ -214,7 +216,7 @@ int main(int argc, char *argv[])
 
             // get the proper bins
             int BinThetaGen  = FindBin(GetAngle(Gen1,Gen2), 2 * BinCount, Bins);
-            int BinEnergyGen = FindBin(Gen1[0]*Gen2[0]/(TotalE*TotalE), EnergyBinCount, EnergyBins);
+            // int BinEnergyGen = FindBin(Gen1[0]*Gen2[0]/(TotalE*TotalE), EnergyBinCount, EnergyBins);
             double zGen = (1-cos(GetAngle(Gen1,Gen2)))/2; 
             int BinZGen = FindBin(zGen, 2*BinCount, zBins); 
 
@@ -222,8 +224,8 @@ int main(int argc, char *argv[])
             double EEC =  Gen1[0]*Gen2[0]/(TotalE*TotalE); 
             
             // fill the histograms
-            h2_EvtSelBefore_Theta.Fill(BinThetaGen, BinEnergyGen, EEC); 
-            h2_EvtSelBefore_Z.Fill(BinZGen, BinEnergyGen, EEC); 
+            h2_EvtSelBefore_Theta.Fill(BinThetaGen, EEC, EEC); 
+            h2_EvtSelBefore_Z.Fill(BinZGen, EEC, EEC); 
             h1_EvtSelBefore_Z.Fill(BinZGen, EEC); 
             h1_EvtSelBefore_Theta.Fill(BinThetaGen, EEC);
          }
