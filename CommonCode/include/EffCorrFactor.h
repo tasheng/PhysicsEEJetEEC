@@ -9,6 +9,8 @@ using namespace std;
 #include "TH1D.h"
 #include "TH2D.h"
 
+#include "TMath.h"
+
 class EffCorrFactor
 {
 public:
@@ -24,6 +26,11 @@ public:
    void write(TFile& OutputFile, string effArgName, TH1D* _h_num, TH1D* _h_den);
    void write(TFile& OutputFile, string effArgName, TH2D* _h_num, TH2D* _h_den);
 
+   // apply the correction factor on the exact histogram binning
+   // would just be a multiplication operation
+   void applyEffCorrOnHisto(TH2D* h_2D_bfCorr, TH2D* h_2D_afCorr);
+
+   // apply the correction factor on an entry-by-entry basis
    Float_t efficiency(Float_t argBin);
    Float_t efficiency(Float_t argBin, Float_t normEEBin);
    Int_t counter;
@@ -76,6 +83,63 @@ void EffCorrFactor::write(TFile& OutputFile, string effArgName, TH2D* _h_num, TH
    _h_num->Write();
    _h_den->Write();
    _heff_2D->Write();
+}
+
+void EffCorrFactor::applyEffCorrOnHisto(TH2D* h_2D_bfCorr, TH2D* h_2D_afCorr)
+{
+   for (Int_t ix=0;ix<=h_2D_bfCorr->GetNbinsX();ix++)
+   { 
+      // checking the bin boundaries 
+      if (h_2D_bfCorr->GetXaxis()->GetBinLowEdge(ix)!=_heff_2D->GetXaxis()->GetBinLowEdge(ix) ||
+          h_2D_bfCorr->GetXaxis()->GetBinLowEdge(ix)!=h_2D_afCorr->GetXaxis()->GetBinLowEdge(ix))
+      {
+         printf("[Error] EffCorrFactor::applyEffCorrOnHisto is doing a matrix multiplication.\n" \
+                "This requires the uncorrected, corrected distributions and the efficiency factor has the same bin configuration!\n");
+         exit(1);
+      }
+
+      for (Int_t iy=0;iy<=h_2D_bfCorr->GetNbinsY();iy++)
+      {
+         // checking the bin boundaries 
+         if (h_2D_bfCorr->GetYaxis()->GetBinLowEdge(iy)!=_heff_2D->GetYaxis()->GetBinLowEdge(iy) ||
+             h_2D_bfCorr->GetYaxis()->GetBinLowEdge(iy)!=h_2D_afCorr->GetYaxis()->GetBinLowEdge(iy))
+         {
+            printf("[Error] EffCorrFactor::applyEffCorrOnHisto is doing a matrix multiplication.\n" \
+                   "This requires the uncorrected, corrected distributions and the efficiency factor has the same bin configuration!\n");
+            exit(1);
+         }
+
+         double x = h_2D_bfCorr->GetXaxis()->GetBinCenter(ix);
+         double y = h_2D_bfCorr->GetYaxis()->GetBinCenter(iy);
+
+         int hBinIdx    = h_2D_bfCorr->FindBin(x,y);
+         int effBinIdx  = _heff_2D->FindBin(x,y);
+         if(_heff_2D->GetBinContent(effBinIdx)>0)
+         {
+            double n_afCorr   = h_2D_bfCorr->GetBinContent(hBinIdx)/_heff_2D->GetBinContent(effBinIdx);
+            double errrel_num = (h_2D_bfCorr->GetBinError(hBinIdx)>0 && h_2D_bfCorr->GetBinContent(hBinIdx)>0)? h_2D_bfCorr->GetBinError(hBinIdx)/h_2D_bfCorr->GetBinContent(hBinIdx): 0;
+            double errrel_den = _heff_2D->GetBinError(effBinIdx)/_heff_2D->GetBinContent(effBinIdx);
+            
+            double errrel_n_afCorr = TMath::Sqrt(errrel_num*errrel_num+errrel_den*errrel_den);
+
+            h_2D_afCorr->SetBinContent(hBinIdx,n_afCorr);
+            h_2D_afCorr->SetBinError  (hBinIdx,n_afCorr*errrel_n_afCorr);
+         }
+         else
+         {
+            h_2D_afCorr->SetBinContent(hBinIdx,0);
+            h_2D_afCorr->SetBinError(hBinIdx,0);
+         }
+         // if (ix<=2 and iy <=2)
+         // {
+         //    printf("[ix=%d,x=%.3f][iy=%d,y=%.3f] h_2D_bfCorr=%.3f+/-%.3f, _heff_2D=%.3f+/-%.3f, h_2D_afCorr=%.3f+/-%.3f\n", 
+         //             ix, x, iy, y,
+         //             h_2D_bfCorr->GetBinContent(hBinIdx), h_2D_bfCorr->GetBinError(hBinIdx),
+         //             _heff_2D->GetBinContent(effBinIdx), _heff_2D->GetBinError(effBinIdx),
+         //             h_2D_afCorr->GetBinContent(hBinIdx), h_2D_afCorr->GetBinError(hBinIdx));
+         // }
+      }
+   }
 }
 
 Float_t EffCorrFactor::efficiency(Float_t argBin)
