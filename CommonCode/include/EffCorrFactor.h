@@ -25,6 +25,7 @@ public:
    void write(TFile& OutputFile, string effArgName, TH2D* _h_num, TH2D* _h_den);
 
    Float_t efficiency(Float_t argBin);
+   Float_t efficiency(Float_t argBin, Float_t normEEBin);
    Int_t counter;
 
 };
@@ -48,7 +49,7 @@ void EffCorrFactor::init(string EffCorrFactorPath, string effArgName)
 
    _effInf   = new TFile(EffCorrFactorPath.c_str(),"READ");
    _heff_1D  = (TH1D*) _effInf->Get(Form("eff_%s", effArgName.c_str()));
-   // _heff_2D  = (TH2D*) _effInf->Get(Form("eff_%s_E", effArgName.c_str()));
+   _heff_2D  = (TH2D*) _effInf->Get(Form("eff_%s_normEE", effArgName.c_str()));
    counter   = 0;
    return;
 }
@@ -70,7 +71,7 @@ void EffCorrFactor::write(TFile& OutputFile, string effArgName, TH2D* _h_num, TH
    OutputFile.cd();
    _h_num->SetName(Form("num_%s", effArgName.c_str()));
    _h_den->SetName(Form("den_%s", effArgName.c_str()));
-   _heff_2D = (TH2D*) _h_num->Clone(Form("eff_%s", effArgName.c_str()));
+   _heff_2D = (TH2D*) _h_num->Clone(Form("eff_%s_normEE", effArgName.c_str()));
    _heff_2D->Divide(_h_den);
    _h_num->Write();
    _h_den->Write();
@@ -80,6 +81,21 @@ void EffCorrFactor::write(TFile& OutputFile, string effArgName, TH2D* _h_num, TH
 Float_t EffCorrFactor::efficiency(Float_t argBin)
 {
   Float_t e = _heff_1D->GetBinContent(_heff_1D->FindBin(argBin));
+  if(e < 0.00000000001){
+    if(counter < 10){
+      std::cout << "!!!Error on efficiency correction! Zero efficiency!!! " << _heff_1D->GetName() << "=" << argBin << std::endl << std::endl;
+      if(counter == 9) std::cout << " !!!Greater than ten calls of this error... TERMINATING OUTPUT, PLEASE FIX" << std::endl;
+      ++counter;
+    }
+    
+    e = 1;
+  }  
+  return e;
+}
+
+Float_t EffCorrFactor::efficiency(Float_t argBin, Float_t normEEBin)
+{
+  Float_t e = _heff_2D->GetBinContent(_heff_2D->FindBin(argBin, normEEBin));
   if(e < 0.00000000001){
     if(counter < 10){
       std::cout << "!!!Error on efficiency correction! Zero efficiency!!! " << _heff_1D->GetName() << "=" << argBin << std::endl << std::endl;

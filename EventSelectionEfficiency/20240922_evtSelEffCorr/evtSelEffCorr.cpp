@@ -1,4 +1,4 @@
-// ./matchingEffCorr.exe --Input v0/LEP1MC1994_recons_aftercut-001_Matched.root --Matched PairTree --Unmatched UnmatchedPairTree
+// ./EvtSelEffCorr.exe --Input v0/LEP1MC1994_recons_aftercut-001_Matched.root --Matched PairTree --Unmatched UnmatchedPairTree
 #include <iostream>
 #include <vector>
 #include <map>
@@ -50,41 +50,17 @@ int main(int argc, char *argv[])
    static vector<int> Colors = GetCVDColors6();
 
    string InputFileName          = CL.Get("Input");
-   string MatchingEffFileName    = CL.Get("MatchingEffName", "MatchingEff.root");
-   string MatchingEffArgName     = CL.Get("MatchingEffArgName", "z");
-   bool MakeMatchingEffCorrFactor= CL.GetBool("MakeMatchingEffCorrFactor", false);
-   string MatchedTreeName        = CL.Get("Matched", "PairTree");
-   string UnmatchedTreeName      = CL.Get("Unmatched", "UnmatchedPairTree");
+   string EvtSelEffFileName      = CL.Get("EvtSelEffName", "EvtSelEff.root");
+   string EvtSelEffArgName       = CL.Get("EvtSelEffArgName", "z");
+   bool MakeEvtSelEffCorrFactor  = CL.GetBool("MakeEvtSelEffCorrFactor", false);
+   string GenTreeName            = CL.Get("Gen", "tgen");
+   string GenBeforeTreeName      = CL.Get("GenBefore", "tgenBefore");
    TFile InputFile(InputFileName.c_str());
 
    double TotalE = 91.1876;
 
-   TChain MatchedTreeChain(MatchedTreeName.c_str());
-   FillChain(MatchedTreeChain, {InputFileName});
-   TTreeReader MatchedReader(&MatchedTreeChain);
-
-   TTreeReaderValue<int> Matched_NPair(   MatchedReader, "NPair");
-   // TTreeReaderArray<double> Matched_GenE1(      MatchedReader, "GenE1");
-   // TTreeReaderArray<double> Matched_GenX1(      MatchedReader, "GenX1");
-   // TTreeReaderArray<double> Matched_GenY1(      MatchedReader, "GenY1");
-   // TTreeReaderArray<double> Matched_GenZ1(      MatchedReader, "GenZ1");
-   // TTreeReaderArray<double> Matched_GenE2(      MatchedReader, "GenE2");
-   // TTreeReaderArray<double> Matched_GenX2(      MatchedReader, "GenX2");
-   // TTreeReaderArray<double> Matched_GenY2(      MatchedReader, "GenY2");
-   // TTreeReaderArray<double> Matched_GenZ2(      MatchedReader, "GenZ2");
-   // TTreeReaderArray<double> Matched_Distance1(  MatchedReader, "Distance1");
-   // TTreeReaderArray<double> Matched_Distance2(  MatchedReader, "Distance2");
-   TTreeReaderArray<double> Matched_DistanceGen(MatchedReader, "DistanceGen");
-   TTreeReaderArray<double> Matched_E1E2Gen(    MatchedReader, "E1E2Gen");
-
-
-   TChain UnmatchedTreeChain(UnmatchedTreeName.c_str());
-   FillChain(UnmatchedTreeChain, {InputFileName});
-   TTreeReader UnmatchedReader(&UnmatchedTreeChain);
-
-   TTreeReaderValue<int> NUnmatchedPair(          UnmatchedReader, "NUnmatchedPair");
-   TTreeReaderArray<double> DistanceUnmatchedGen( UnmatchedReader, "DistanceUnmatchedGen");
-   TTreeReaderArray<double> E1E2GenUnmatched(     UnmatchedReader, "E1E2GenUnmatched");
+   ParticleTreeMessenger MGen(InputFile, GenTreeName);
+   ParticleTreeMessenger MGenBefore(InputFile, GenBeforeTreeName); 
 
    //------------------------------------
    // define the binning
@@ -132,68 +108,84 @@ int main(int argc, char *argv[])
    // -------------------------------------------
 
    // 2D histograms
-   TH2D h2_BeforeMatching_Theta("h2_BeforeMatching_Theta", "h2_BeforeMatching_Theta", 2 * BinCount, 0, 2 * BinCount,  EnergyBinCount, EnergyBins);
-   TH2D h2_BeforeMatching_Z("h2_BeforeMatching_Z", "h2_BeforeMatching_Z", 2 * BinCount, 0, 2 * BinCount,  EnergyBinCount, EnergyBins);
-   TH2D h2_Matching_Theta("h2_Matching_Theta", "h2_Matching_Theta", 2 * BinCount, 0, 2 * BinCount,  EnergyBinCount, EnergyBins);
-   TH2D h2_Matching_Z("h2_Matching_Z", "h2_Matching_Z", 2 * BinCount, 0, 2 * BinCount,  EnergyBinCount, EnergyBins);
+   TH2D h2_EvtSelBefore_Theta("h2_EvtSelBefore_Theta", "h2_EvtSelBefore_Theta", 2 * BinCount, 0, 2 * BinCount,  EnergyBinCount, EnergyBins);
+   TH2D h2_EvtSelBefore_Z("h2_EvtSelBefore_Z", "h2_EvtSelBefore_Z", 2 * BinCount, 0, 2 * BinCount,  EnergyBinCount, EnergyBins);
+   TH2D h2_EvtSel_Theta("h2_EvtSel_Theta", "h2_EvtSel_Theta", 2 * BinCount, 0, 2 * BinCount,  EnergyBinCount, EnergyBins);
+   TH2D h2_EvtSel_Z("h2_EvtSel_Z", "h2_EvtSel_Z", 2 * BinCount, 0, 2 * BinCount,  EnergyBinCount, EnergyBins);
 
    // 1D histograms
-   TH1D h1_Matching_Z("h1_Matching_Z", "h1_Matching_Z", 2 * BinCount, 0, 2 * BinCount); 
-   TH1D h1_BeforeMatching_Z("h1_BeforeMatching_Z", "h1_BeforeMatching_Z", 2 * BinCount, 0, 2 * BinCount); 
-   TH1D h1_Matching_Theta("h1_Matching_Theta", "h1_Matching_Theta", 2 * BinCount, 0, 2 * BinCount); 
-   TH1D h1_BeforeMatching_Theta("h1_BeforeMatching_Theta", "h1_BeforeMatching_Theta", 2 * BinCount, 0, 2 * BinCount); 
+   TH1D h1_EvtSel_Z("h1_EvtSel_Z", "h1_EvtSel_Z", 2 * BinCount, 0, 2 * BinCount); 
+   TH1D h1_EvtSelBefore_Z("h1_EvtSelBefore_Z", "h1_EvtSelBefore_Z", 2 * BinCount, 0, 2 * BinCount); 
+   TH1D h1_EvtSel_Theta("h1_EvtSel_Theta", "h1_EvtSel_Theta", 2 * BinCount, 0, 2 * BinCount); 
+   TH1D h1_EvtSelBefore_Theta("h1_EvtSelBefore_Theta", "h1_EvtSelBefore_Theta", 2 * BinCount, 0, 2 * BinCount); 
 
    // corrected 1D histograms
-   TH1D h1_MatchingCorrected_Z("h1_MatchingCorrected_Z", "h1_MatchingCorrected_Z", 2 * BinCount, 0, 2 * BinCount); 
-   TH1D h1_MatchingCorrected_Theta("h1_MatchingCorrected_Theta", "h1_MatchingCorrected_Theta", 2 * BinCount, 0, 2 * BinCount); 
+   TH1D h1_EvtSelCorrected_Z("h1_EvtSelCorrected_Z", "h1_EvtSelCorrected_Z", 2 * BinCount, 0, 2 * BinCount); 
+   TH1D h1_EvtSelCorrected_Theta("h1_EvtSelCorrected_Theta", "h1_EvtSelCorrected_Theta", 2 * BinCount, 0, 2 * BinCount); 
 
    //------------------------------------
    // define the matching efficiency correction factor
    //------------------------------------
-   EffCorrFactor matchingEffCorrFactor;
-   if (!filesystem::exists(MatchingEffFileName.c_str())) MakeMatchingEffCorrFactor = true;
+   EffCorrFactor EvtSelEffCorrFactor;
+   if (!filesystem::exists(EvtSelEffFileName.c_str())) MakeEvtSelEffCorrFactor = true;
    
-   if (MakeMatchingEffCorrFactor)
+   if (MakeEvtSelEffCorrFactor)
    {
-      printf("[INFO] produce matching efficiency correction factor (%s), MatchingEffArgName=%s\n", MatchingEffFileName.c_str(), MatchingEffArgName.c_str());
+      printf("[INFO] produce matching efficiency correction factor (%s), EvtSelEffArgName=%s\n", EvtSelEffFileName.c_str(), EvtSelEffArgName.c_str());
    } else {
-      printf("[INFO] applying matching efficiency correction factor (%s), MatchingEffArgName=%s\n", MatchingEffFileName.c_str(), MatchingEffArgName.c_str());
-      matchingEffCorrFactor.init(MatchingEffFileName.c_str(), MatchingEffArgName.c_str());
+      printf("[INFO] applying matching efficiency correction factor (%s), EvtSelEffArgName=%s\n", EvtSelEffFileName.c_str(), EvtSelEffArgName.c_str());
+      EvtSelEffCorrFactor.init(EvtSelEffFileName.c_str(), EvtSelEffArgName.c_str());
    }
 
    // -------------------------------------
-   // loop over the tree after gen-matching
+   // loop over the tree after event selections
    // -------------------------------------
-   int EntryCount = MatchedReader.GetEntries(true);
+   int EntryCount = MGen.GetEntries();
    for(int iE = 0; iE < EntryCount; iE++)
    {
-      MatchedReader.Next();
+      MGen.GetEntry(iE);
 
-      // calculate and fill the EECs
-      for (int iPair = 0; iPair < *Matched_NPair; iPair++) 
+      // fill the four vector
+      vector<FourVector> PGen;
+      for(int i = 0; i < MGen.nParticle; i++){
+        // charged particle selection 
+       if(MGen.charge[i] == 0) continue;
+       if(MGen.highPurity[i] == false) continue;
+         PGen.push_back(MGen.P[i]);
+      } // end loop over the particles 
+
+
+      // now calculate and fill the EECs
+      for(int i = 0; i < PGen.size(); i++)
       {
-         // get the proper bins
-         int BinThetaGen  = FindBin(Matched_DistanceGen[iPair], 2 * BinCount, Bins);
-         int BinEnergyGen = FindBin(Matched_E1E2Gen[iPair], EnergyBinCount, EnergyBins);
-         double zGen = (1-cos(Matched_DistanceGen[iPair]))/2; 
-         int BinZGen = FindBin(zGen, 2*BinCount, zBins); 
+        for(int j = i+1; j < PGen.size();j++)
+        {
+            FourVector Gen1 = PGen.at(i);
+            FourVector Gen2 = PGen.at(j);
 
-         // calculate the EEC
-         double EEC =  Matched_E1E2Gen[iPair]; 
-         
-         // fill the histograms
-         h2_Matching_Theta.Fill(BinThetaGen, BinEnergyGen, EEC); 
-         h2_Matching_Z.Fill(BinZGen, BinEnergyGen, EEC); 
-         h1_Matching_Z.Fill(BinZGen, EEC); 
-         h1_Matching_Theta.Fill(BinThetaGen, EEC);
-         if (!MakeMatchingEffCorrFactor)
-         {
-            double efficiency = matchingEffCorrFactor.efficiency((MatchingEffArgName=="z")? BinZGen: BinThetaGen,
-                                                                 BinEnergyGen);
-            // printf("argBin: %d, z: %.3f, eff: %.3f \n", BinZGen, zGen, efficiency);
-            // printf("argBin: %d, normEEBin:%d, z: %.3f, normEE: %.3f, eff: %.3f \n", BinZGen, BinEnergyGen, zGen, EEC, efficiency);
-            h1_MatchingCorrected_Z.Fill(BinZGen, EEC/efficiency); 
-            h1_MatchingCorrected_Theta.Fill(BinThetaGen, EEC/efficiency);
+            // get the proper bins
+            int BinThetaGen  = FindBin(GetAngle(Gen1,Gen2), 2 * BinCount, Bins);
+            int BinEnergyGen = FindBin(Gen1[0]*Gen2[0]/(TotalE*TotalE), EnergyBinCount, EnergyBins);
+            double zGen = (1-cos(GetAngle(Gen1,Gen2)))/2; 
+            int BinZGen = FindBin(zGen, 2*BinCount, zBins); 
+
+            // calculate the EEC
+            double EEC =  Gen1[0]*Gen2[0]/(TotalE*TotalE); 
+            
+            // fill the histograms
+            h2_EvtSel_Theta.Fill(BinThetaGen, BinEnergyGen, EEC); 
+            h2_EvtSel_Z.Fill(BinZGen, BinEnergyGen, EEC); 
+            h1_EvtSel_Z.Fill(BinZGen, EEC); 
+            h1_EvtSel_Theta.Fill(BinThetaGen, EEC);
+            if (!MakeEvtSelEffCorrFactor)
+            {
+               double efficiency = EvtSelEffCorrFactor.efficiency((EvtSelEffArgName=="z")? BinZGen: BinThetaGen,
+                                                                    BinEnergyGen);
+               // printf("argBin: %d, z: %.3f, eff: %.3f \n", BinZGen, zGen, efficiency);
+               // printf("argBin: %d, normEEBin:%d, z: %.3f, normEE: %.3f, eff: %.3f \n", BinZGen, BinEnergyGen, zGen, EEC, efficiency);
+               h1_EvtSelCorrected_Z.Fill(BinZGen, EEC/efficiency); 
+               h1_EvtSelCorrected_Theta.Fill(BinThetaGen, EEC/efficiency);
+            }
          }
       }
    } // end loop over the number of events'
@@ -201,125 +193,139 @@ int main(int argc, char *argv[])
    // -------------------------------------
    // loop over the tree before gen-matching
    // -------------------------------------
-   int EntryCountBefore = UnmatchedReader.GetEntries(true);
+   int EntryCountBefore = MGenBefore.GetEntries();
    for(int iE = 0; iE < EntryCountBefore; iE++)
    {
-      UnmatchedReader.Next();
+      MGenBefore.GetEntry(iE);
+      // fill the four vector
+      vector<FourVector> PGenBefore;
+      for(int i = 0; i < MGenBefore.nParticle; i++){
+        // charged particle selection 
+       if(MGenBefore.charge[i] == 0) continue;
+       if(MGenBefore.highPurity[i] == false) continue;
+         PGenBefore.push_back(MGenBefore.P[i]);
+      } // end loop over the particles 
 
-      // calculate and fill the EECs
-      for (int iPair = 0; iPair < *NUnmatchedPair; iPair++) 
-      {
-         // get the proper bins
-         int BinThetaGen  = FindBin(DistanceUnmatchedGen[iPair], 2 * BinCount, Bins);
-         int BinEnergyGen = FindBin(E1E2GenUnmatched[iPair]/(TotalE*TotalE), EnergyBinCount, EnergyBins);
-         double zGen = (1-cos(DistanceUnmatchedGen[iPair]))/2; 
-         int BinZGen = FindBin(zGen, 2*BinCount, zBins); 
+      // now calculate and fill the EECs
+      for(int i = 0; i < PGenBefore.size(); i++){
+        for(int j = i+1; j < PGenBefore.size();j++){
+            FourVector Gen1 = PGenBefore.at(i);
+            FourVector Gen2 = PGenBefore.at(j);
 
-         // calculate the EEC
-         double EEC =  E1E2GenUnmatched[iPair]/(TotalE*TotalE); 
-         
-         // fill the histograms
-         h2_BeforeMatching_Theta.Fill(BinThetaGen, BinEnergyGen, EEC); 
-         h2_BeforeMatching_Z.Fill(BinZGen, BinEnergyGen, EEC); 
-         h1_BeforeMatching_Z.Fill(BinZGen, EEC); 
-         h1_BeforeMatching_Theta.Fill(BinThetaGen, EEC);
+            // get the proper bins
+            int BinThetaGen  = FindBin(GetAngle(Gen1,Gen2), 2 * BinCount, Bins);
+            int BinEnergyGen = FindBin(Gen1[0]*Gen2[0]/(TotalE*TotalE), EnergyBinCount, EnergyBins);
+            double zGen = (1-cos(GetAngle(Gen1,Gen2)))/2; 
+            int BinZGen = FindBin(zGen, 2*BinCount, zBins); 
+
+            // calculate the EEC
+            double EEC =  Gen1[0]*Gen2[0]/(TotalE*TotalE); 
+            
+            // fill the histograms
+            h2_EvtSelBefore_Theta.Fill(BinThetaGen, BinEnergyGen, EEC); 
+            h2_EvtSelBefore_Z.Fill(BinZGen, BinEnergyGen, EEC); 
+            h1_EvtSelBefore_Z.Fill(BinZGen, EEC); 
+            h1_EvtSelBefore_Theta.Fill(BinThetaGen, EEC);
+         }
       }
    } // end loop over the number of events
    // EEC is per-event so scale by the event number
-   printf( "h1_Matching_Z.GetEntries(): %.3f, EntryCount: %d, h1_BeforeMatching_Z.GetEntries(): %.3f, EntryCountBefore: %d\n", 
-            h1_Matching_Z.GetEntries(), EntryCount,
-            h1_BeforeMatching_Z.GetEntries(), EntryCountBefore );
-   h1_Matching_Z.Scale(1.0/EntryCount); 
-   h1_BeforeMatching_Z.Scale(1.0/EntryCountBefore);
-   h1_Matching_Theta.Scale(1.0/EntryCount);
-   h1_BeforeMatching_Theta.Scale(1.0/EntryCountBefore);
-   h2_Matching_Z.Scale(1.0/EntryCount); 
-   h2_BeforeMatching_Z.Scale(1.0/EntryCountBefore);
-   h2_Matching_Theta.Scale(1.0/EntryCount);
-   h2_BeforeMatching_Theta.Scale(1.0/EntryCountBefore);
-   if (!MakeMatchingEffCorrFactor)
+   printf( "h1_EvtSel_Z.GetEntries(): %.3f, EntryCount: %d, h1_EvtSelBefore_Z.GetEntries(): %.3f, EntryCountBefore: %d\n", 
+            h1_EvtSel_Z.GetEntries(), EntryCount,
+            h1_EvtSelBefore_Z.GetEntries(), EntryCountBefore );
+   h1_EvtSel_Z.Scale(1.0/EntryCount); 
+   h1_EvtSelBefore_Z.Scale(1.0/EntryCountBefore);
+   h1_EvtSel_Theta.Scale(1.0/EntryCount);
+   h1_EvtSelBefore_Theta.Scale(1.0/EntryCountBefore);
+   h2_EvtSel_Z.Scale(1.0/EntryCount); 
+   h2_EvtSelBefore_Z.Scale(1.0/EntryCountBefore);
+   h2_EvtSel_Theta.Scale(1.0/EntryCount);
+   h2_EvtSelBefore_Theta.Scale(1.0/EntryCountBefore);
+   if (!MakeEvtSelEffCorrFactor)
    {
-      h1_MatchingCorrected_Z.Scale(1.0/EntryCount);
-      h1_MatchingCorrected_Theta.Scale(1.0/EntryCount);
+      h1_EvtSelCorrected_Z.Scale(1.0/EntryCount);
+      h1_EvtSelCorrected_Theta.Scale(1.0/EntryCount);
    }
 
    // divide by the bin width
-   DivideByBin(h1_Matching_Z, zBins);
-   DivideByBin(h1_BeforeMatching_Z, zBins);
-   DivideByBin(h1_Matching_Theta, Bins);
-   DivideByBin(h1_BeforeMatching_Theta, Bins);
-   if (!MakeMatchingEffCorrFactor)
+   DivideByBin(h1_EvtSel_Z, zBins);
+   DivideByBin(h1_EvtSelBefore_Z, zBins);
+   DivideByBin(h1_EvtSel_Theta, Bins);
+   DivideByBin(h1_EvtSelBefore_Theta, Bins);
+   if (!MakeEvtSelEffCorrFactor)
    {
-      DivideByBin(h1_MatchingCorrected_Z,zBins);
-      DivideByBin(h1_MatchingCorrected_Theta,Bins);
+      DivideByBin(h1_EvtSelCorrected_Z,zBins);
+      DivideByBin(h1_EvtSelCorrected_Theta,Bins);
    }
 
    // set the style for the plots
-   h1_Matching_Z.SetMarkerColor(Colors[2]);
-   h1_BeforeMatching_Z.SetMarkerColor(Colors[3]);
-   h1_Matching_Theta.SetMarkerColor(Colors[2]);
-   h1_BeforeMatching_Theta.SetMarkerColor(Colors[3]);
-   h1_Matching_Z.SetLineColor(Colors[2]);
-   h1_BeforeMatching_Z.SetLineColor(Colors[3]);
-   h1_Matching_Theta.SetLineColor(Colors[2]);
-   h1_BeforeMatching_Theta.SetLineColor(Colors[3]);
-   h1_Matching_Z.SetMarkerStyle(20);
-   h1_BeforeMatching_Z.SetMarkerStyle(20);
-   h1_Matching_Theta.SetMarkerStyle(20);
-   h1_BeforeMatching_Theta.SetMarkerStyle(20);
-   h1_Matching_Z.SetLineWidth(2);
-   h1_BeforeMatching_Z.SetLineWidth(2);
-   h1_Matching_Theta.SetLineWidth(2);
-   h1_BeforeMatching_Theta.SetLineWidth(2);
-   if (!MakeMatchingEffCorrFactor)
+   h1_EvtSel_Z.SetMarkerColor(Colors[2]);
+   h1_EvtSelBefore_Z.SetMarkerColor(Colors[3]);
+   h1_EvtSel_Theta.SetMarkerColor(Colors[2]);
+   h1_EvtSelBefore_Theta.SetMarkerColor(Colors[3]);
+   h1_EvtSel_Z.SetLineColor(Colors[2]);
+   h1_EvtSelBefore_Z.SetLineColor(Colors[3]);
+   h1_EvtSel_Theta.SetLineColor(Colors[2]);
+   h1_EvtSelBefore_Theta.SetLineColor(Colors[3]);
+   h1_EvtSel_Z.SetMarkerStyle(20);
+   h1_EvtSelBefore_Z.SetMarkerStyle(20);
+   h1_EvtSel_Theta.SetMarkerStyle(20);
+   h1_EvtSelBefore_Theta.SetMarkerStyle(20);
+   h1_EvtSel_Z.SetLineWidth(2);
+   h1_EvtSelBefore_Z.SetLineWidth(2);
+   h1_EvtSel_Theta.SetLineWidth(2);
+   h1_EvtSelBefore_Theta.SetLineWidth(2);
+   if (!MakeEvtSelEffCorrFactor)
    {
-      h1_MatchingCorrected_Z.SetMarkerColor(Colors[4]);
-      h1_MatchingCorrected_Z.SetLineColor(Colors[4]);
-      h1_MatchingCorrected_Z.SetMarkerStyle(20);
-      h1_MatchingCorrected_Z.SetLineWidth(2);
-      h1_MatchingCorrected_Theta.SetMarkerColor(Colors[4]);
-      h1_MatchingCorrected_Theta.SetLineColor(Colors[4]);
-      h1_MatchingCorrected_Theta.SetMarkerStyle(20);
-      h1_MatchingCorrected_Theta.SetLineWidth(2);
+      h1_EvtSelCorrected_Z.SetMarkerColor(Colors[4]);
+      h1_EvtSelCorrected_Z.SetLineColor(Colors[4]);
+      h1_EvtSelCorrected_Z.SetMarkerStyle(20);
+      h1_EvtSelCorrected_Z.SetLineWidth(2);
+      h1_EvtSelCorrected_Theta.SetMarkerColor(Colors[4]);
+      h1_EvtSelCorrected_Theta.SetLineColor(Colors[4]);
+      h1_EvtSelCorrected_Theta.SetMarkerStyle(20);
+      h1_EvtSelCorrected_Theta.SetLineWidth(2);
 
    }
 
    // Matching is given by SelectedEvents/TotalEvents
-   if (!MakeMatchingEffCorrFactor)
+   if (!MakeEvtSelEffCorrFactor)
    {
-      std::vector<TH1D> hists = {h1_BeforeMatching_Z, h1_Matching_Z, h1_MatchingCorrected_Z}; 
-      std::vector<TH1D> hists_theta = {h1_BeforeMatching_Theta, h1_Matching_Theta, h1_MatchingCorrected_Theta};
+      std::vector<TH1D> hists = {h1_EvtSelBefore_Z, h1_EvtSel_Z, h1_EvtSelCorrected_Z}; 
+      std::vector<TH1D> hists_theta = {h1_EvtSelBefore_Theta, h1_EvtSel_Theta, h1_EvtSelCorrected_Theta};
 
-      string plotPrefix(MatchingEffFileName);
+      system("mkdir -p plot/");
+      string plotPrefix(EvtSelEffFileName);
       plotPrefix.replace(plotPrefix.find(".root"), 5, "");
-      MakeCanvasZ(hists, {"Before Matching", "After Matching", "Matching Corrected"}, 
-                  Form("%s_Closure", plotPrefix.c_str()), "#it{z} = (1- cos(#theta))/2", "#frac{1}{#it{N}_{event}}#frac{d(Sum E_{i}E_{j}/E^{2})}{d#it{z}}",1e-3,1e3, true, true);
-      MakeCanvas(hists_theta, {"Before Matching", "After Matching", "Matching Corrected"},
-                  Form("%s_Theta_Closure", plotPrefix.c_str()),"#theta", "#frac{1}{#it{N}_{event}}#frac{d(Sum E_{i}E_{j}/E^{2})}{d#it{#theta}}",1e-3, 2e0, true, true);
+      MakeCanvasZ(hists, {"Before Evt. Sel.", "After Evt. Sel.", "Evt. Sel. Corrected"}, 
+                  Form("plot/%s_Closure", plotPrefix.c_str()), "#it{z} = (1- cos(#theta))/2", "#frac{1}{#it{N}_{event}}#frac{d(Sum E_{i}E_{j}/E^{2})}{d#it{z}}",1e-3,1e3, true, true);
+      MakeCanvas(hists_theta, {"Before Evt. Sel.", "After Evt. Sel.", "Evt. Sel. Corrected"},
+                  Form("plot/%s_Theta_Closure", plotPrefix.c_str()),"#theta", "#frac{1}{#it{N}_{event}}#frac{d(Sum E_{i}E_{j}/E^{2})}{d#it{#theta}}",1e-3, 2e0, true, true);
    } 
    else 
    {
-      std::vector<TH1D> hists = {h1_BeforeMatching_Z, h1_Matching_Z}; 
-      std::vector<TH1D> hists_theta = {h1_BeforeMatching_Theta, h1_Matching_Theta};
+      std::vector<TH1D> hists = {h1_EvtSelBefore_Z, h1_EvtSel_Z}; 
+      std::vector<TH1D> hists_theta = {h1_EvtSelBefore_Theta, h1_EvtSel_Theta};
 
-      string plotPrefix(MatchingEffFileName);
+      system("mkdir -p plot/");
+      string plotPrefix(EvtSelEffFileName);
       plotPrefix.replace(plotPrefix.find(".root"), 5, "");
-      MakeCanvasZ(hists, {"Before Matching", "After Matching"}, 
-                  Form("%s_Matching", plotPrefix.c_str()), "#it{z} = (1- cos(#theta))/2", "#frac{1}{#it{N}_{event}}#frac{d(Sum E_{i}E_{j}/E^{2})}{d#it{z}}",1e-3,1e3, true, true);
-      MakeCanvas(hists_theta, {"Before Matching", "After Matching"},
-                  Form("%s_Matching_Theta", plotPrefix.c_str()),"#theta", "#frac{1}{#it{N}_{event}}#frac{d(Sum E_{i}E_{j}/E^{2})}{d#it{#theta}}",1e-3, 2e0, true, true);
+      MakeCanvasZ(hists, {"Before Evt. Sel.", "After Evt. Sel."}, 
+                  Form("plot/%s_EvtSel", plotPrefix.c_str()), "#it{z} = (1- cos(#theta))/2", "#frac{1}{#it{N}_{event}}#frac{d(Sum E_{i}E_{j}/E^{2})}{d#it{z}}",1e-3,1e3, true, true);
+      MakeCanvas(hists_theta, {"Before Evt. Sel.", "After Evt. Sel."},
+                  Form("plot/%s_EvtSel_Theta", plotPrefix.c_str()),"#theta", "#frac{1}{#it{N}_{event}}#frac{d(Sum E_{i}E_{j}/E^{2})}{d#it{#theta}}",1e-3, 2e0, true, true);
    }
 
    // now handle the 2D plots
 
    // write to the output file
-   if (MakeMatchingEffCorrFactor)
+   if (MakeEvtSelEffCorrFactor)
    {
-      TFile OutputFile(MatchingEffFileName.c_str(), "RECREATE");
-      matchingEffCorrFactor.write(OutputFile, "theta", &h1_Matching_Theta, &h1_BeforeMatching_Theta);
-      matchingEffCorrFactor.write(OutputFile, "z", &h1_Matching_Z, &h1_BeforeMatching_Z);
-      matchingEffCorrFactor.write(OutputFile, "theta", &h2_Matching_Theta, &h2_BeforeMatching_Theta);
-      matchingEffCorrFactor.write(OutputFile, "z", &h2_Matching_Z, &h2_BeforeMatching_Z);
+      TFile OutputFile(EvtSelEffFileName.c_str(), "RECREATE");
+      EvtSelEffCorrFactor.write(OutputFile, "theta", &h1_EvtSel_Theta, &h1_EvtSelBefore_Theta);
+      EvtSelEffCorrFactor.write(OutputFile, "z", &h1_EvtSel_Z, &h1_EvtSelBefore_Z);
+      EvtSelEffCorrFactor.write(OutputFile, "theta", &h2_EvtSel_Theta, &h2_EvtSelBefore_Theta);
+      EvtSelEffCorrFactor.write(OutputFile, "z", &h2_EvtSel_Z, &h2_EvtSelBefore_Z);
 
       OutputFile.Close();
    }
