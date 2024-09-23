@@ -33,6 +33,7 @@ for Tag in setup['systematics']:
 
     # Get the variant histogram
     if Item['variant_type'].casefold() == 'Nominal'.casefold():
+        OutputFile.cd()
         Variant = NominalHistogram.Clone(setup['output']['histogram'] + f"_{Tag}_Variant")
     elif Item['variant_type'].casefold() == 'File'.casefold():
         VariantFile = ROOT.TFile(Item['variant_file'])
@@ -40,6 +41,7 @@ for Tag in setup['systematics']:
         Variant = VariantFile.Get(Item['variant_histogram']).Clone(setup['output']['histogram'] + f"_{Tag}_Variant")
         VariantFile.Close()
     elif Item['variant_type'].casefold() == 'Scale'.casefold():
+        OutputFile.cd()
         Variant = NominalHistogram.Clone(setup['output']['histogram'] + f"_{Tag}_Variant")
         Variant.Scale(Item['variant_scale'])
     elif Item['variant_type'].casefold() == '1DRatio'.casefold():
@@ -51,7 +53,12 @@ for Tag in setup['systematics']:
         Scale = Item['variant_scale'] if 'variant_scale' in Item else 1.00
         for iX in range(0, NBinsX + 2):   # include also underflow and overflow (0 and N+1)
             for iY in range(0, NBinsY + 2):
-                Correction = Numerator.GetBinContent(iX) / Denominator.GetBinContent(iX)
+                N = Numerator.GetBinContent(iX)
+                D = Denominator.GetBinContent(iX)
+                if D != 0:
+                    Correction = N / D
+                else:
+                    Correction = 1
                 if Correction <= 0:
                     Correction = 1
                 Variant.SetBinContent(iX, iY, Variant.GetBinContent(iX, iY) * ((Correction - 1) * Scale + 1))
@@ -78,9 +85,14 @@ for Tag in setup['systematics']:
 # Write things out
 OutputFile.cd()
 TotalHistogram.Write()
+
+print('Done!')
+
 OutputFile.Close()
 
-NominalFile.Close()
+print('Done!')
+
+# NominalFile.Close()
 
 
 
