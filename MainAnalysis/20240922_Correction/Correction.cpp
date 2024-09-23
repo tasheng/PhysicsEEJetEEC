@@ -98,9 +98,20 @@ int main(int argc, char *argv[])
    TH1D* HDataAfCorr1D = (TH1D*) HDataAfCorr.ProjectionX();
    projection(&HDataBfCorr, HDataBfCorr1D);
    projection(&HDataAfCorr, HDataAfCorr1D);
+   Output.cd();
    HDataBfCorr1D->Write();
    HDataAfCorr1D->Write();
-   
+
+   TH1D* HDataBfCorr1D_unfoldBinCorr = (TH1D*) HDataBfCorr1D->Clone(Form("%s_unfoldBinCorr", HDataBfCorr1D->GetName()));
+   TH1D* HDataAfCorr1D_unfoldBinCorr = (TH1D*) HDataAfCorr1D->Clone(Form("%s_unfoldBinCorr", HDataAfCorr1D->GetName()));
+   EffCorrFactor UnfoldingBinCorrFactor;
+   UnfoldingBinCorrFactor.init("../../Unfolding/20240923_UnfoldingBinningCorrection/UnfoldingBinCorr_with_z.root", "z");
+   UnfoldingBinCorrFactor.applyEffCorrOnHisto(HDataBfCorr1D, HDataBfCorr1D_unfoldBinCorr);
+   UnfoldingBinCorrFactor.applyEffCorrOnHisto(HDataAfCorr1D, HDataAfCorr1D_unfoldBinCorr);
+   Output.cd();
+   HDataBfCorr1D_unfoldBinCorr->Write();
+   HDataAfCorr1D_unfoldBinCorr->Write();
+
    Output.Close();
 
 }
