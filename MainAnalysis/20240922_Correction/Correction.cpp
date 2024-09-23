@@ -27,22 +27,6 @@ using namespace std;
 #include "SetStyle.h"
 #include "EffCorrFactor.h"
 
-
-
-int main(int argc, char *argv[]);
-int FindBin(double Value, int NBins, double Bins[]); 
-void MakeCanvasZ(vector<TH1D > Histograms, TGraphErrors DataSyst, vector<string> Labels, string Output, string X, string Y, double WorldMin, double WorldMax, bool DoRatio, bool LogX); 
-void MakeCanvas(vector<TH1D> Histograms, TGraphErrors DataSyst, vector<string> Labels, string Output, string X, string Y, double WorldMin, double WorldMax, bool DoRatio, bool LogX); 
-void SetPad(TPad &P); 
-void DivideByBin(TH1D &H, double Bins[]); 
-
-// can we put this in the CommonCode/ ?
-void FillChain(TChain &chain, const vector<string> &files) {
-  for (auto file : files) {
-    chain.Add(file.c_str());
-  }
-}
-
 // JC: the projection is copied here just so a quick check of the projected 1D histogram is accessible
 void projection(TH2D* h_2D, TH1D* h_1D)
 {
@@ -80,13 +64,14 @@ int main(int argc, char *argv[])
 
    // HDataBfCorr.Print("all");
 
+   int applyEffCorrOnHistoErrorStatus = 0;
    EffCorrFactor matchingEffCorrFactor;
    matchingEffCorrFactor.init("../../Unfolding/20240328_Unfolding/matchingScheme2/MatchingEff.root", "z");
-   matchingEffCorrFactor.applyEffCorrOnHisto(&HDataBfCorr, &HDataAfCorr);
+   applyEffCorrOnHistoErrorStatus += matchingEffCorrFactor.applyEffCorrOnHisto(&HDataBfCorr, &HDataAfCorr);
 
    EffCorrFactor EvtSelEffCorrFactor;
    EvtSelEffCorrFactor.init("../../EventSelectionEfficiency/20240922_evtSelEffCorr/EvtSelEff.root", "z");
-   EvtSelEffCorrFactor.applyEffCorrOnHisto(&HDataBfCorr, &HDataAfCorr);
+   applyEffCorrOnHistoErrorStatus += EvtSelEffCorrFactor.applyEffCorrOnHisto(&HDataBfCorr, &HDataAfCorr);
 
    TFile Output(OutputFileName.c_str(), "RECREATE");
    Output.cd();
@@ -106,12 +91,17 @@ int main(int argc, char *argv[])
    TH1D* HDataAfCorr1D_unfoldBinCorr = (TH1D*) HDataAfCorr1D->Clone(Form("%s_unfoldBinCorr", HDataAfCorr1D->GetName()));
    EffCorrFactor UnfoldingBinCorrFactor;
    UnfoldingBinCorrFactor.init("../../Unfolding/20240923_UnfoldingBinningCorrection/UnfoldingBinCorr_with_z.root", "z");
-   UnfoldingBinCorrFactor.applyEffCorrOnHisto(HDataBfCorr1D, HDataBfCorr1D_unfoldBinCorr);
-   UnfoldingBinCorrFactor.applyEffCorrOnHisto(HDataAfCorr1D, HDataAfCorr1D_unfoldBinCorr);
+   applyEffCorrOnHistoErrorStatus += UnfoldingBinCorrFactor.applyEffCorrOnHisto(HDataBfCorr1D, HDataBfCorr1D_unfoldBinCorr);
+   applyEffCorrOnHistoErrorStatus += UnfoldingBinCorrFactor.applyEffCorrOnHisto(HDataAfCorr1D, HDataAfCorr1D_unfoldBinCorr);
    Output.cd();
    HDataBfCorr1D_unfoldBinCorr->Write();
    HDataAfCorr1D_unfoldBinCorr->Write();
 
    Output.Close();
 
+   if (applyEffCorrOnHistoErrorStatus>0)
+   {
+      printf("[Error] Something wrong with applyEffCorrOnHisto.\n");
+      return 1;
+   } else return 0;
 }

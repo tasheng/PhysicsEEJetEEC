@@ -26,12 +26,14 @@ public:
    void write(TFile& OutputFile, string effArgName, TH1D* _h_num, TH1D* _h_den);
    void write(TFile& OutputFile, string effArgName, TH2D* _h_num, TH2D* _h_den);
 
-   // apply the correction factor on the exact histogram binning
-   // would just be a multiplication operation
-   void applyEffCorrOnHisto(TH1D* h_1D_bfCorr, TH1D* h_1D_afCorr);
-   void applyEffCorrOnHisto(TH2D* h_2D_bfCorr, TH2D* h_2D_afCorr);
+   // * apply the correction factor on the exact histogram binning
+   //   would just be a multiplication operation
+   // * this will return the error code (1) if the efficiency factor is null
+   int applyEffCorrOnHisto(TH1D* h_1D_bfCorr, TH1D* h_1D_afCorr);
+   int applyEffCorrOnHisto(TH2D* h_2D_bfCorr, TH2D* h_2D_afCorr);
 
-   // apply the correction factor on an entry-by-entry basis
+   // * apply the correction factor on an entry-by-entry basis
+   // * this will return eff=-999 if the efficiency factor is null
    Float_t efficiency(Float_t argBin);
    Float_t efficiency(Float_t argBin, Float_t normEEBin);
    Int_t counter;
@@ -86,24 +88,25 @@ void EffCorrFactor::write(TFile& OutputFile, string effArgName, TH2D* _h_num, TH
    _heff_2D->Write();
 }
 
-void EffCorrFactor::applyEffCorrOnHisto(TH1D* h_1D_bfCorr, TH1D* h_1D_afCorr)
+int EffCorrFactor::applyEffCorrOnHisto(TH1D* h_1D_bfCorr, TH1D* h_1D_afCorr)
 {
    if (!_heff_1D) 
    {
       printf("[Error] EffCorrFactor::applyEffCorrOnHisto couldn't find _heff_1D.\n");
       _effInf->ls();
-      exit(1);
+      return 1;
    }
 
    for (Int_t ix=0;ix<=h_1D_bfCorr->GetNbinsX();ix++)
    { 
-      // checking the bin boundaries 
+      // [Warning] A check-point after HP2024
+      //           checking the bin boundaries, to see if it is safe to do the matrix multiplication
       if (h_1D_bfCorr->GetXaxis()->GetBinLowEdge(ix)!=_heff_1D->GetXaxis()->GetBinLowEdge(ix) ||
           h_1D_bfCorr->GetXaxis()->GetBinLowEdge(ix)!=h_1D_afCorr->GetXaxis()->GetBinLowEdge(ix))
       {
          printf("[Error] EffCorrFactor::applyEffCorrOnHisto is doing a matrix multiplication.\n" \
                 "This requires the uncorrected, corrected distributions and the efficiency factor has the same bin configuration!\n");
-         exit(1);
+         return 1;
       }
 
       double x = h_1D_bfCorr->GetXaxis()->GetBinCenter(ix);
@@ -135,36 +138,39 @@ void EffCorrFactor::applyEffCorrOnHisto(TH1D* h_1D_bfCorr, TH1D* h_1D_afCorr)
       //             h_1D_afCorr->GetBinContent(hBinIdx), h_1D_afCorr->GetBinError(hBinIdx));
       // }
    }
+   return 0;
 }
 
-void EffCorrFactor::applyEffCorrOnHisto(TH2D* h_2D_bfCorr, TH2D* h_2D_afCorr)
+int EffCorrFactor::applyEffCorrOnHisto(TH2D* h_2D_bfCorr, TH2D* h_2D_afCorr)
 {
    if (!_heff_2D) 
    {
       printf("[Error] EffCorrFactor::applyEffCorrOnHisto couldn't find _heff_2D.\n");
       _effInf->ls();
-      exit(1);
+      return 1;
    }
    for (Int_t ix=0;ix<=h_2D_bfCorr->GetNbinsX();ix++)
    { 
-      // checking the bin boundaries 
+      // [Warning] A check-point after HP2024
+      //           checking the bin boundaries, to see if it is safe to do the matrix multiplication
       if (h_2D_bfCorr->GetXaxis()->GetBinLowEdge(ix)!=_heff_2D->GetXaxis()->GetBinLowEdge(ix) ||
           h_2D_bfCorr->GetXaxis()->GetBinLowEdge(ix)!=h_2D_afCorr->GetXaxis()->GetBinLowEdge(ix))
       {
          printf("[Error] EffCorrFactor::applyEffCorrOnHisto is doing a matrix multiplication.\n" \
                 "This requires the uncorrected, corrected distributions and the efficiency factor has the same bin configuration!\n");
-         exit(1);
+         return 1;
       }
 
       for (Int_t iy=0;iy<=h_2D_bfCorr->GetNbinsY();iy++)
       {
-         // checking the bin boundaries 
+         // [Warning] A check-point after HP2024
+         //           checking the bin boundaries, to see if it is safe to do the matrix multiplication
          if (h_2D_bfCorr->GetYaxis()->GetBinLowEdge(iy)!=_heff_2D->GetYaxis()->GetBinLowEdge(iy) ||
              h_2D_bfCorr->GetYaxis()->GetBinLowEdge(iy)!=h_2D_afCorr->GetYaxis()->GetBinLowEdge(iy))
          {
             printf("[Error] EffCorrFactor::applyEffCorrOnHisto is doing a matrix multiplication.\n" \
                    "This requires the uncorrected, corrected distributions and the efficiency factor has the same bin configuration!\n");
-            exit(1);
+            return 1;
          }
 
          double x = h_2D_bfCorr->GetXaxis()->GetBinCenter(ix);
@@ -198,15 +204,16 @@ void EffCorrFactor::applyEffCorrOnHisto(TH2D* h_2D_bfCorr, TH2D* h_2D_afCorr)
          // }
       }
    }
+   return 0;
 }
 
 Float_t EffCorrFactor::efficiency(Float_t argBin)
 {
    if (!_heff_1D) 
    {
-      printf("[Error] EffCorrFactor::applyEffCorrOnHisto couldn't find _heff_1D.\n");
+      printf("[Error] EffCorrFactor::efficiency couldn't find _heff_1D.\n");
       _effInf->ls();
-      exit(1);
+     return -999.;
    }
    Float_t e = _heff_1D->GetBinContent(_heff_1D->FindBin(argBin));
    if(e < 0.00000000001)
@@ -226,9 +233,9 @@ Float_t EffCorrFactor::efficiency(Float_t argBin, Float_t normEEBin)
 {
    if (!_heff_2D) 
    {
-      printf("[Error] EffCorrFactor::applyEffCorrOnHisto couldn't find _heff_2D.\n");
+      printf("[Error] EffCorrFactor::efficiency couldn't find _heff_2D.\n");
       _effInf->ls();
-      exit(1);
+     return -999.;
    }
    Float_t e = _heff_2D->GetBinContent(_heff_2D->FindBin(argBin, normEEBin));
    if(e < 0.00000000001)

@@ -76,6 +76,8 @@ int main(int argc, char *argv[])
    double zBinMin = (1- cos(0.002))/2;
    double zBinMax = 0.5;
 
+   // [Warning] A future todo improvement task after HP2024
+   //           to make the bin boundary configurable in the future
    // energy binning
    // const int EnergyBinCount = 10; 
    // double EnergyBins[EnergyBinCount+1];
@@ -96,6 +98,8 @@ int main(int argc, char *argv[])
     
    }
 
+   // [Warning] A future todo improvement task after HP2024
+   //           to make the bin boundary configurable in the future
    // EnergyBins[0] = 0;
    // for(int e = 1; e <= EnergyBinCount; e++){
    //    double logValue = logMin + e * logStep;

@@ -88,8 +88,15 @@ int main(int argc, char *argv[])
 
    if (!MakeUnfoldingBinCorrFactor)
    {
-      UnfoldingBinCorrFactor.applyEffCorrOnHisto( &h1_Projected2DUnfolding_Z, &h1_UnfoldingBinReweighted_Z );
-      UnfoldingBinCorrFactor.applyEffCorrOnHisto( &h1_Projected2DUnfolding_Theta, &h1_UnfoldingBinReweighted_Theta );
+      int applyEffCorrOnHistoErrorStatus = 0;
+      applyEffCorrOnHistoErrorStatus += UnfoldingBinCorrFactor.applyEffCorrOnHisto( &h1_Projected2DUnfolding_Z, &h1_UnfoldingBinReweighted_Z );
+      applyEffCorrOnHistoErrorStatus += UnfoldingBinCorrFactor.applyEffCorrOnHisto( &h1_Projected2DUnfolding_Theta, &h1_UnfoldingBinReweighted_Theta );
+      
+      if (applyEffCorrOnHistoErrorStatus>0)
+      {
+         printf("[Error] Something wrong with applyEffCorrOnHisto.\n");
+         return 1;
+      }
    }
 
    //------------------------------------
