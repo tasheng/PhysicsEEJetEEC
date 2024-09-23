@@ -1,0 +1,21 @@
+
+output:
+  file: SystematicsE2C_Z.root
+  histogram: Systematics_Z 
+nominal:
+  file: unfoldingE2C_DataUnfolding_DoubleLogBinning_09232024.root
+  histogram: Bayesian_Unfoldediter2_Z
+systematics:
+  IterationCount:
+    base_type: nominal
+    variant_type: file
+    variant_file: unfoldingE2C_DataUnfolding_DoubleLogBinning_09232024.root
+    variant_histogram: Bayesian_Unfoldediter3_Z
+  MCBinning:
+    base_type: nominal
+    variant_type: 1dratio
+    variant_file: unfoldingE2C_DataUnfolding_DoubleLogBinning_09232024.root
+    variant_numerator: h1True_Z_ProjectionX
+    variant_denominator: h1MCGen_Z
+    variant_scale: 0.5
+
