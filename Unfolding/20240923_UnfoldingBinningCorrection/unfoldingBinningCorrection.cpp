@@ -1,4 +1,4 @@
-// ./EvtSelEffCorr.exe --Input v0/LEP1MC1994_recons_aftercut-001_Matched.root --Matched PairTree --Unmatched UnmatchedPairTree
+// ./UnfoldingBinCorr.exe --Input v0/LEP1MC1994_recons_aftercut-001_Matched.root --Matched PairTree --Unmatched UnmatchedPairTree
 #include <iostream>
 #include <vector>
 #include <map>
@@ -48,23 +48,60 @@ int main(int argc, char *argv[])
    SetThesisStyle();
    static vector<int> Colors = GetCVDColors6();
 
-   string InputFileName          = CL.Get("Input");
-   string EvtSelEffFileName      = CL.Get("EvtSelEffName", "EvtSelEff.root");
-   string EvtSelEffArgName       = CL.Get("EvtSelEffArgName", "z");
-   bool MakeEvtSelEffCorrFactor  = CL.GetBool("MakeEvtSelEffCorrFactor", false);
-   string GenTreeName            = CL.Get("Gen", "tgen");
-   string GenBeforeTreeName      = CL.Get("GenBefore", "tgenBefore");
+   string InputFileName                = CL.Get("Input");
+   string UnfoldingBinCorrFileName     = CL.Get("UnfoldingBinCorrName", "UnfoldingBinCorr.root");
+   string UnfoldingBinCorrArgName      = CL.Get("UnfoldingBinCorrArgName", "z"); // theta
+   bool MakeUnfoldingBinCorrFactor     = CL.GetBool("MakeUnfoldingBinCorrFactor", false);
    TFile InputFile(InputFileName.c_str());
 
-   double TotalE = 91.1876;
+   string Projected2DUnfoldingName     =  (UnfoldingBinCorrArgName=="theta")? "h1True_Theta_ProjectionX":
+                                          "h1True_Z_ProjectionX";
+   string MCGen1DName                  =  (UnfoldingBinCorrArgName=="theta")? "h1MCGen_Theta":
+                                          "h1MCGen_Z";
 
-   ParticleTreeMessenger MGen(InputFile, GenTreeName);
-   ParticleTreeMessenger MGenBefore(InputFile, GenBeforeTreeName); 
+   // -------------------------------------------
+   // allocate the histograms
+   // -------------------------------------------
+   // 1D histograms
+   TH1D h1_Projected2DUnfolding_Z( *((TH1D*) InputFile.Get("h1True_Theta_ProjectionX")) );
+   TH1D h1_MCGen1D_Z( *((TH1D*) InputFile.Get("h1MCGen_Z")) );
+   TH1D h1_Projected2DUnfolding_Theta( *((TH1D*) InputFile.Get("h1True_Theta_ProjectionX")) );
+   TH1D h1_MCGen1D_Theta( *((TH1D*) InputFile.Get("h1MCGen_Theta")) );
+
+   // reweighted 1D histograms
+   TH1D h1_UnfoldingBinReweighted_Z( *((TH1D*) h1_Projected2DUnfolding_Z.Clone(Form("%s_afCorr", h1_Projected2DUnfolding_Z.GetName()))) );
+   TH1D h1_UnfoldingBinReweighted_Theta( *((TH1D*) h1_Projected2DUnfolding_Theta.Clone(Form("%s_afCorr", h1_Projected2DUnfolding_Theta.GetName()))) );
 
    //------------------------------------
-   // define the binning
+   // define the unfolding binning correction factor
    //------------------------------------
+   EffCorrFactor UnfoldingBinCorrFactor;
+   if (!filesystem::exists(UnfoldingBinCorrFileName.c_str())) MakeUnfoldingBinCorrFactor = true;
+   
+   if (MakeUnfoldingBinCorrFactor)
+   {
+      printf("[INFO] produce unfolding binning correction factor (%s), UnfoldingBinCorrArgName=%s\n", UnfoldingBinCorrFileName.c_str(), UnfoldingBinCorrArgName.c_str());
+   } else {
+      printf("[INFO] applying unfolding binning correction factor (%s), UnfoldingBinCorrArgName=%s\n", UnfoldingBinCorrFileName.c_str(), UnfoldingBinCorrArgName.c_str());
+      UnfoldingBinCorrFactor.init(UnfoldingBinCorrFileName.c_str(), UnfoldingBinCorrArgName.c_str());
+   }
 
+   if (!MakeUnfoldingBinCorrFactor)
+   {
+      int applyEffCorrOnHistoErrorStatus = 0;
+      applyEffCorrOnHistoErrorStatus += UnfoldingBinCorrFactor.applyEffCorrOnHisto( &h1_Projected2DUnfolding_Z, &h1_UnfoldingBinReweighted_Z );
+      applyEffCorrOnHistoErrorStatus += UnfoldingBinCorrFactor.applyEffCorrOnHisto( &h1_Projected2DUnfolding_Theta, &h1_UnfoldingBinReweighted_Theta );
+      
+      if (applyEffCorrOnHistoErrorStatus>0)
+      {
+         printf("[Error] Something wrong with applyEffCorrOnHisto.\n");
+         return 1;
+      }
+   }
+
+   //------------------------------------
+   // define the binning from histograms
+   //------------------------------------
    // theta binning
    const int BinCount = 100;
    double Bins[2*BinCount+1];
@@ -75,17 +112,6 @@ int main(int argc, char *argv[])
    double zBins[2*BinCount+1];
    double zBinMin = (1- cos(0.002))/2;
    double zBinMax = 0.5;
-
-   // [Warning] A future todo improvement task after HP2024
-   //           to make the bin boundary configurable in the future
-   // energy binning
-   // const int EnergyBinCount = 10; 
-   // double EnergyBins[EnergyBinCount+1];
-   // double EnergyBinMin = 4e-6;
-   // double EnergyBinMax = 0.2;
-   // double logMin = std::log10(EnergyBinMin);
-   // double logMax = std::log10(EnergyBinMax);
-   // double logStep = (logMax - logMin) / (EnergyBinCount);
 
    for(int i = 0; i <= BinCount; i++){
       // theta double log binning
@@ -98,238 +124,97 @@ int main(int argc, char *argv[])
     
    }
 
-   // [Warning] A future todo improvement task after HP2024
-   //           to make the bin boundary configurable in the future
-   // EnergyBins[0] = 0;
-   // for(int e = 1; e <= EnergyBinCount; e++){
-   //    double logValue = logMin + e * logStep;
-   //    EnergyBins[e] =  std::pow(10, logValue);
-   //    printf("%f ", EnergyBins[e]);
-   // }
-   vector<double> EnergyBins = {0.0, 0.0001, 0.0002, 0.0005, 0.00075, 0.001, 0.00125, 0.0015, 0.00175, 0.002, 0.0025, 0.003, 0.004, 0.01, 0.04, 0.07, 0.15, 0.3};
+  TString fnamemc = "/data/janicechen/PhysicsEEJetEEC/Unfolding/20240328_Unfolding/v2/LEP1MC1994_recons_aftercut-001_Matched.root";
+  TFile *inputmc =TFile::Open(fnamemc);
+  TTree *mc=(TTree*)inputmc->Get("PairTree"); 
+  double nEv2=mc->GetEntries();
 
-   // -------------------------------------------
-   // allocate the histograms
-   // -------------------------------------------
-
-   // 2D histograms
-   TH2D h2_EvtSelBefore_Theta("h2_EvtSelBefore_Theta", "h2_EvtSelBefore_Theta", 2 * BinCount, 0, 2 * BinCount, EnergyBins.size()-1, EnergyBins.data());
-   TH2D h2_EvtSelBefore_Z("h2_EvtSelBefore_Z", "h2_EvtSelBefore_Z", 2 * BinCount, 0, 2 * BinCount, EnergyBins.size()-1, EnergyBins.data());
-   TH2D h2_EvtSel_Theta("h2_EvtSel_Theta", "h2_EvtSel_Theta", 2 * BinCount, 0, 2 * BinCount, EnergyBins.size()-1, EnergyBins.data());
-   TH2D h2_EvtSel_Z("h2_EvtSel_Z", "h2_EvtSel_Z", 2 * BinCount, 0, 2 * BinCount, EnergyBins.size()-1, EnergyBins.data());
-
-   // 1D histograms
-   TH1D h1_EvtSel_Z("h1_EvtSel_Z", "h1_EvtSel_Z", 2 * BinCount, 0, 2 * BinCount); 
-   TH1D h1_EvtSelBefore_Z("h1_EvtSelBefore_Z", "h1_EvtSelBefore_Z", 2 * BinCount, 0, 2 * BinCount); 
-   TH1D h1_EvtSel_Theta("h1_EvtSel_Theta", "h1_EvtSel_Theta", 2 * BinCount, 0, 2 * BinCount); 
-   TH1D h1_EvtSelBefore_Theta("h1_EvtSelBefore_Theta", "h1_EvtSelBefore_Theta", 2 * BinCount, 0, 2 * BinCount); 
-
-   // corrected 1D histograms
-   TH1D h1_EvtSelCorrected_Z("h1_EvtSelCorrected_Z", "h1_EvtSelCorrected_Z", 2 * BinCount, 0, 2 * BinCount); 
-   TH1D h1_EvtSelCorrected_Theta("h1_EvtSelCorrected_Theta", "h1_EvtSelCorrected_Theta", 2 * BinCount, 0, 2 * BinCount); 
-
-   //------------------------------------
-   // define the event selection efficiency correction factor
-   //------------------------------------
-   EffCorrFactor EvtSelEffCorrFactor;
-   if (!filesystem::exists(EvtSelEffFileName.c_str())) MakeEvtSelEffCorrFactor = true;
-   
-   if (MakeEvtSelEffCorrFactor)
+   h1_Projected2DUnfolding_Z.Scale(1.0/nEv2); 
+   h1_MCGen1D_Z.Scale(1.0/nEv2);
+   h1_Projected2DUnfolding_Theta.Scale(1.0/nEv2);
+   h1_MCGen1D_Theta.Scale(1.0/nEv2);
+   if (!MakeUnfoldingBinCorrFactor)
    {
-      printf("[INFO] produce event selection efficiency correction factor (%s), EvtSelEffArgName=%s\n", EvtSelEffFileName.c_str(), EvtSelEffArgName.c_str());
-   } else {
-      printf("[INFO] applying event selection efficiency correction factor (%s), EvtSelEffArgName=%s\n", EvtSelEffFileName.c_str(), EvtSelEffArgName.c_str());
-      EvtSelEffCorrFactor.init(EvtSelEffFileName.c_str(), EvtSelEffArgName.c_str());
+      h1_UnfoldingBinReweighted_Z.Scale(1.0/nEv2);
+      h1_UnfoldingBinReweighted_Theta.Scale(1.0/nEv2);
    }
 
-   // -------------------------------------
-   // loop over the tree after event selections
-   // -------------------------------------
-   int EntryCount = MGen.GetEntries();
-   for(int iE = 0; iE < EntryCount; iE++)
-   {
-      MGen.GetEntry(iE);
-
-      // fill the four vector
-      vector<FourVector> PGen;
-      for(int i = 0; i < MGen.nParticle; i++){
-        // charged particle selection 
-       if(MGen.charge[i] == 0) continue;
-       if(MGen.highPurity[i] == false) continue;
-         PGen.push_back(MGen.P[i]);
-      } // end loop over the particles 
-
-
-      // now calculate and fill the EECs
-      for(int i = 0; i < PGen.size(); i++)
-      {
-        for(int j = i+1; j < PGen.size();j++)
-        {
-            FourVector Gen1 = PGen.at(i);
-            FourVector Gen2 = PGen.at(j);
-
-            // get the proper bins
-            int BinThetaGen  = FindBin(GetAngle(Gen1,Gen2), 2 * BinCount, Bins);
-            // int BinEnergyGen = FindBin(Gen1[0]*Gen2[0]/(TotalE*TotalE), EnergyBinCount, EnergyBins);
-            double zGen = (1-cos(GetAngle(Gen1,Gen2)))/2; 
-            int BinZGen = FindBin(zGen, 2*BinCount, zBins); 
-
-            // calculate the EEC
-            double EEC =  Gen1[0]*Gen2[0]/(TotalE*TotalE); 
-            
-            // fill the histograms
-            h2_EvtSel_Theta.Fill(BinThetaGen, EEC, EEC); 
-            h2_EvtSel_Z.Fill(BinZGen, EEC, EEC); 
-            h1_EvtSel_Z.Fill(BinZGen, EEC); 
-            h1_EvtSel_Theta.Fill(BinThetaGen, EEC);
-            if (!MakeEvtSelEffCorrFactor)
-            {
-               double efficiency = EvtSelEffCorrFactor.efficiency((EvtSelEffArgName=="z")? BinZGen: BinThetaGen,
-                                                                    EEC);
-               // printf("argBin: %d, z: %.3f, eff: %.3f \n", BinZGen, zGen, efficiency);
-               // printf("argBin: %d, normEEBin:%d, z: %.3f, normEE: %.3f, eff: %.3f \n", BinZGen, BinEnergyGen, zGen, EEC, efficiency);
-               h1_EvtSelCorrected_Z.Fill(BinZGen, EEC/efficiency); 
-               h1_EvtSelCorrected_Theta.Fill(BinThetaGen, EEC/efficiency);
-            }
-         }
-      }
-   } // end loop over the number of events'
-
-   // -------------------------------------
-   // loop over the tree before event selection
-   // -------------------------------------
-   int EntryCountBefore = MGenBefore.GetEntries();
-   for(int iE = 0; iE < EntryCountBefore; iE++)
-   {
-      MGenBefore.GetEntry(iE);
-      // fill the four vector
-      vector<FourVector> PGenBefore;
-      for(int i = 0; i < MGenBefore.nParticle; i++){
-        // charged particle selection 
-       if(MGenBefore.charge[i] == 0) continue;
-       if(MGenBefore.highPurity[i] == false) continue;
-         PGenBefore.push_back(MGenBefore.P[i]);
-      } // end loop over the particles 
-
-      // now calculate and fill the EECs
-      for(int i = 0; i < PGenBefore.size(); i++){
-        for(int j = i+1; j < PGenBefore.size();j++){
-            FourVector Gen1 = PGenBefore.at(i);
-            FourVector Gen2 = PGenBefore.at(j);
-
-            // get the proper bins
-            int BinThetaGen  = FindBin(GetAngle(Gen1,Gen2), 2 * BinCount, Bins);
-            // int BinEnergyGen = FindBin(Gen1[0]*Gen2[0]/(TotalE*TotalE), EnergyBinCount, EnergyBins);
-            double zGen = (1-cos(GetAngle(Gen1,Gen2)))/2; 
-            int BinZGen = FindBin(zGen, 2*BinCount, zBins); 
-
-            // calculate the EEC
-            double EEC =  Gen1[0]*Gen2[0]/(TotalE*TotalE); 
-            
-            // fill the histograms
-            h2_EvtSelBefore_Theta.Fill(BinThetaGen, EEC, EEC); 
-            h2_EvtSelBefore_Z.Fill(BinZGen, EEC, EEC); 
-            h1_EvtSelBefore_Z.Fill(BinZGen, EEC); 
-            h1_EvtSelBefore_Theta.Fill(BinThetaGen, EEC);
-         }
-      }
-   } // end loop over the number of events
-   // EEC is per-event so scale by the event number
-   printf( "h1_EvtSel_Z.GetEntries(): %.3f, EntryCount: %d, h1_EvtSelBefore_Z.GetEntries(): %.3f, EntryCountBefore: %d\n", 
-            h1_EvtSel_Z.GetEntries(), EntryCount,
-            h1_EvtSelBefore_Z.GetEntries(), EntryCountBefore );
-   h1_EvtSel_Z.Scale(1.0/EntryCount); 
-   h1_EvtSelBefore_Z.Scale(1.0/EntryCountBefore);
-   h1_EvtSel_Theta.Scale(1.0/EntryCount);
-   h1_EvtSelBefore_Theta.Scale(1.0/EntryCountBefore);
-   h2_EvtSel_Z.Scale(1.0/EntryCount); 
-   h2_EvtSelBefore_Z.Scale(1.0/EntryCountBefore);
-   h2_EvtSel_Theta.Scale(1.0/EntryCount);
-   h2_EvtSelBefore_Theta.Scale(1.0/EntryCountBefore);
-   if (!MakeEvtSelEffCorrFactor)
-   {
-      h1_EvtSelCorrected_Z.Scale(1.0/EntryCount);
-      h1_EvtSelCorrected_Theta.Scale(1.0/EntryCount);
-   }
 
    // divide by the bin width
-   DivideByBin(h1_EvtSel_Z, zBins);
-   DivideByBin(h1_EvtSelBefore_Z, zBins);
-   DivideByBin(h1_EvtSel_Theta, Bins);
-   DivideByBin(h1_EvtSelBefore_Theta, Bins);
-   if (!MakeEvtSelEffCorrFactor)
+   DivideByBin(h1_Projected2DUnfolding_Z, zBins);
+   DivideByBin(h1_MCGen1D_Z, zBins);
+   DivideByBin(h1_Projected2DUnfolding_Theta, Bins);
+   DivideByBin(h1_MCGen1D_Theta, Bins);
+   if (!MakeUnfoldingBinCorrFactor)
    {
-      DivideByBin(h1_EvtSelCorrected_Z,zBins);
-      DivideByBin(h1_EvtSelCorrected_Theta,Bins);
+      DivideByBin(h1_UnfoldingBinReweighted_Z, zBins);
+      DivideByBin(h1_UnfoldingBinReweighted_Theta, Bins);
    }
+
 
    // set the style for the plots
-   h1_EvtSel_Z.SetMarkerColor(Colors[2]);
-   h1_EvtSelBefore_Z.SetMarkerColor(Colors[3]);
-   h1_EvtSel_Theta.SetMarkerColor(Colors[2]);
-   h1_EvtSelBefore_Theta.SetMarkerColor(Colors[3]);
-   h1_EvtSel_Z.SetLineColor(Colors[2]);
-   h1_EvtSelBefore_Z.SetLineColor(Colors[3]);
-   h1_EvtSel_Theta.SetLineColor(Colors[2]);
-   h1_EvtSelBefore_Theta.SetLineColor(Colors[3]);
-   h1_EvtSel_Z.SetMarkerStyle(20);
-   h1_EvtSelBefore_Z.SetMarkerStyle(20);
-   h1_EvtSel_Theta.SetMarkerStyle(20);
-   h1_EvtSelBefore_Theta.SetMarkerStyle(20);
-   h1_EvtSel_Z.SetLineWidth(2);
-   h1_EvtSelBefore_Z.SetLineWidth(2);
-   h1_EvtSel_Theta.SetLineWidth(2);
-   h1_EvtSelBefore_Theta.SetLineWidth(2);
-   if (!MakeEvtSelEffCorrFactor)
+   h1_Projected2DUnfolding_Z.SetMarkerColor(Colors[2]);
+   h1_MCGen1D_Z.SetMarkerColor(Colors[3]);
+   h1_Projected2DUnfolding_Theta.SetMarkerColor(Colors[2]);
+   h1_MCGen1D_Theta.SetMarkerColor(Colors[3]);
+   h1_Projected2DUnfolding_Z.SetLineColor(Colors[2]);
+   h1_MCGen1D_Z.SetLineColor(Colors[3]);
+   h1_Projected2DUnfolding_Theta.SetLineColor(Colors[2]);
+   h1_MCGen1D_Theta.SetLineColor(Colors[3]);
+   h1_Projected2DUnfolding_Z.SetMarkerStyle(20);
+   h1_MCGen1D_Z.SetMarkerStyle(20);
+   h1_Projected2DUnfolding_Theta.SetMarkerStyle(20);
+   h1_MCGen1D_Theta.SetMarkerStyle(20);
+   h1_Projected2DUnfolding_Z.SetLineWidth(2);
+   h1_MCGen1D_Z.SetLineWidth(2);
+   h1_Projected2DUnfolding_Theta.SetLineWidth(2);
+   h1_MCGen1D_Theta.SetLineWidth(2);
+   if (!MakeUnfoldingBinCorrFactor)
    {
-      h1_EvtSelCorrected_Z.SetMarkerColor(Colors[4]);
-      h1_EvtSelCorrected_Z.SetLineColor(Colors[4]);
-      h1_EvtSelCorrected_Z.SetMarkerStyle(20);
-      h1_EvtSelCorrected_Z.SetLineWidth(2);
-      h1_EvtSelCorrected_Theta.SetMarkerColor(Colors[4]);
-      h1_EvtSelCorrected_Theta.SetLineColor(Colors[4]);
-      h1_EvtSelCorrected_Theta.SetMarkerStyle(20);
-      h1_EvtSelCorrected_Theta.SetLineWidth(2);
+      h1_UnfoldingBinReweighted_Z.SetMarkerColor(Colors[4]);
+      h1_UnfoldingBinReweighted_Z.SetLineColor(Colors[4]);
+      h1_UnfoldingBinReweighted_Z.SetMarkerStyle(20);
+      h1_UnfoldingBinReweighted_Z.SetLineWidth(2);
+      h1_UnfoldingBinReweighted_Theta.SetMarkerColor(Colors[4]);
+      h1_UnfoldingBinReweighted_Theta.SetLineColor(Colors[4]);
+      h1_UnfoldingBinReweighted_Theta.SetMarkerStyle(20);
+      h1_UnfoldingBinReweighted_Theta.SetLineWidth(2);
 
    }
 
-   if (!MakeEvtSelEffCorrFactor)
+   if (!MakeUnfoldingBinCorrFactor)
    {
-      std::vector<TH1D> hists = {h1_EvtSelBefore_Z, h1_EvtSel_Z, h1_EvtSelCorrected_Z}; 
-      std::vector<TH1D> hists_theta = {h1_EvtSelBefore_Theta, h1_EvtSel_Theta, h1_EvtSelCorrected_Theta};
+      std::vector<TH1D> hists = {h1_MCGen1D_Z, h1_Projected2DUnfolding_Z, h1_UnfoldingBinReweighted_Z}; 
+      std::vector<TH1D> hists_theta = {h1_MCGen1D_Theta, h1_Projected2DUnfolding_Theta, h1_UnfoldingBinReweighted_Theta};
 
       system("mkdir -p plot/");
-      string plotPrefix(EvtSelEffFileName);
+      string plotPrefix(UnfoldingBinCorrFileName);
       plotPrefix.replace(plotPrefix.find(".root"), 5, "");
-      MakeCanvasZ(hists, {"Before Evt. Sel.", "After Evt. Sel.", "Evt. Sel. Corrected"}, 
+      MakeCanvasZ(hists, {"MCGen 1D", "Projected 2D unfolding", "Projected 2D unfolding + bin reweighted"}, 
                   Form("plot/%s_Closure", plotPrefix.c_str()), "#it{z} = (1- cos(#theta))/2", "#frac{1}{#it{N}_{event}}#frac{d(Sum E_{i}E_{j}/E^{2})}{d#it{z}}",1e-3,1e3, true, true);
-      MakeCanvas(hists_theta, {"Before Evt. Sel.", "After Evt. Sel.", "Evt. Sel. Corrected"},
+      MakeCanvas(hists_theta, {"MCGen 1D", "Projected 2D unfolding", "Projected 2D unfolding + bin reweighted"},
                   Form("plot/%s_Theta_Closure", plotPrefix.c_str()),"#theta", "#frac{1}{#it{N}_{event}}#frac{d(Sum E_{i}E_{j}/E^{2})}{d#it{#theta}}",1e-3, 2e0, true, true);
    } 
    else 
    {
-      std::vector<TH1D> hists = {h1_EvtSelBefore_Z, h1_EvtSel_Z}; 
-      std::vector<TH1D> hists_theta = {h1_EvtSelBefore_Theta, h1_EvtSel_Theta};
+      std::vector<TH1D> hists = {h1_MCGen1D_Z, h1_Projected2DUnfolding_Z}; 
+      std::vector<TH1D> hists_theta = {h1_MCGen1D_Theta, h1_Projected2DUnfolding_Theta};
 
       system("mkdir -p plot/");
-      string plotPrefix(EvtSelEffFileName);
+      string plotPrefix(UnfoldingBinCorrFileName);
       plotPrefix.replace(plotPrefix.find(".root"), 5, "");
-      MakeCanvasZ(hists, {"Before Evt. Sel.", "After Evt. Sel."}, 
-                  Form("plot/%s_EvtSel", plotPrefix.c_str()), "#it{z} = (1- cos(#theta))/2", "#frac{1}{#it{N}_{event}}#frac{d(Sum E_{i}E_{j}/E^{2})}{d#it{z}}",1e-3,1e3, true, true);
-      MakeCanvas(hists_theta, {"Before Evt. Sel.", "After Evt. Sel."},
-                  Form("plot/%s_EvtSel_Theta", plotPrefix.c_str()),"#theta", "#frac{1}{#it{N}_{event}}#frac{d(Sum E_{i}E_{j}/E^{2})}{d#it{#theta}}",1e-3, 2e0, true, true);
+      MakeCanvasZ(hists, {"MCGen 1D", "Projected 2D unfolding"}, 
+                  Form("plot/%s_UnfoldingBinCorr", plotPrefix.c_str()), "#it{z} = (1- cos(#theta))/2", "#frac{1}{#it{N}_{event}}#frac{d(Sum E_{i}E_{j}/E^{2})}{d#it{z}}",1e-3,1e3, true, true);
+      MakeCanvas(hists_theta, {"MCGen 1D", "Projected 2D unfolding"},
+                  Form("plot/%s_UnfoldingBinCorr_Theta", plotPrefix.c_str()),"#theta", "#frac{1}{#it{N}_{event}}#frac{d(Sum E_{i}E_{j}/E^{2})}{d#it{#theta}}",1e-3, 2e0, true, true);
    }
 
-   // now handle the 2D plots
-
    // write to the output file
-   if (MakeEvtSelEffCorrFactor)
+   if (MakeUnfoldingBinCorrFactor)
    {
-      TFile OutputFile(EvtSelEffFileName.c_str(), "RECREATE");
-      EvtSelEffCorrFactor.write(OutputFile, "theta", &h1_EvtSel_Theta, &h1_EvtSelBefore_Theta);
-      EvtSelEffCorrFactor.write(OutputFile, "z", &h1_EvtSel_Z, &h1_EvtSelBefore_Z);
-      EvtSelEffCorrFactor.write(OutputFile, "theta", &h2_EvtSel_Theta, &h2_EvtSelBefore_Theta);
-      EvtSelEffCorrFactor.write(OutputFile, "z", &h2_EvtSel_Z, &h2_EvtSelBefore_Z);
+      TFile OutputFile(UnfoldingBinCorrFileName.c_str(), "RECREATE");
+      UnfoldingBinCorrFactor.write(OutputFile, "theta", &h1_Projected2DUnfolding_Theta, &h1_MCGen1D_Theta);
+      UnfoldingBinCorrFactor.write(OutputFile, "z", &h1_Projected2DUnfolding_Z, &h1_MCGen1D_Z);
 
       OutputFile.Close();
    }
@@ -525,7 +410,7 @@ void MakeCanvasZ(vector<TH1D>& Histograms, vector<string> Labels, string Output,
    Latex.SetTextAngle(90);
    Latex.SetTextColor(kBlack);
    if(DoRatio)
-      Latex.DrawLatex(MarginL * 0.3, MarginB + PadRHeight * 0.5, "Event Selection Eff.");
+      Latex.DrawLatex(MarginL * 0.3, MarginB + PadRHeight * 0.5, "Ratio");
    Latex.DrawLatex(MarginL * 0.3, MarginB + PadRHeight + PadHeight * 0.5, Y.c_str());
 
    Latex.SetTextAlign(11);

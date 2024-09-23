@@ -101,14 +101,16 @@ int main(int argc, char *argv[])
    double zBinMin = (1- cos(0.002))/2;
    double zBinMax = 0.5;
 
+   // [Warning] A future todo improvement task after HP2024
+   //           to make the bin boundary configurable in the future
    // energy binning
-   const int EnergyBinCount = 10; 
-   double EnergyBins[EnergyBinCount+1];
-   double EnergyBinMin = 4e-6;
-   double EnergyBinMax = 0.2;
-   double logMin = std::log10(EnergyBinMin);
-   double logMax = std::log10(EnergyBinMax);
-   double logStep = (logMax - logMin) / (EnergyBinCount);
+   // const int EnergyBinCount = 10; 
+   // double EnergyBins[EnergyBinCount+1];
+   // double EnergyBinMin = 4e-6;
+   // double EnergyBinMax = 0.2;
+   // double logMin = std::log10(EnergyBinMin);
+   // double logMax = std::log10(EnergyBinMax);
+   // double logStep = (logMax - logMin) / (EnergyBinCount);
 
    for(int i = 0; i <= BinCount; i++){
       // theta double log binning
@@ -121,21 +123,24 @@ int main(int argc, char *argv[])
     
    }
 
-   EnergyBins[0] = 0;
-   for(int e = 1; e <= EnergyBinCount; e++){
-      double logValue = logMin + e * logStep;
-      EnergyBins[e] =  std::pow(10, logValue);
-   }
+   // [Warning] A future todo improvement task after HP2024
+   //           to make the bin boundary configurable in the future
+   // EnergyBins[0] = 0;
+   // for(int e = 1; e <= EnergyBinCount; e++){
+   //    double logValue = logMin + e * logStep;
+   //    EnergyBins[e] =  std::pow(10, logValue);
+   // }
+   vector<double> EnergyBins = {0.0, 0.0001, 0.0002, 0.0005, 0.00075, 0.001, 0.00125, 0.0015, 0.00175, 0.002, 0.0025, 0.003, 0.004, 0.01, 0.04, 0.07, 0.15, 0.3};
 
    // -------------------------------------------
    // allocate the histograms
    // -------------------------------------------
 
    // 2D histograms
-   TH2D h2_BeforeMatching_Theta("h2_BeforeMatching_Theta", "h2_BeforeMatching_Theta", 2 * BinCount, 0, 2 * BinCount,  EnergyBinCount, EnergyBins);
-   TH2D h2_BeforeMatching_Z("h2_BeforeMatching_Z", "h2_BeforeMatching_Z", 2 * BinCount, 0, 2 * BinCount,  EnergyBinCount, EnergyBins);
-   TH2D h2_Matching_Theta("h2_Matching_Theta", "h2_Matching_Theta", 2 * BinCount, 0, 2 * BinCount,  EnergyBinCount, EnergyBins);
-   TH2D h2_Matching_Z("h2_Matching_Z", "h2_Matching_Z", 2 * BinCount, 0, 2 * BinCount,  EnergyBinCount, EnergyBins);
+   TH2D h2_BeforeMatching_Theta("h2_BeforeMatching_Theta", "h2_BeforeMatching_Theta", 2 * BinCount, 0, 2 * BinCount, EnergyBins.size()-1, EnergyBins.data());
+   TH2D h2_BeforeMatching_Z("h2_BeforeMatching_Z", "h2_BeforeMatching_Z", 2 * BinCount, 0, 2 * BinCount, EnergyBins.size()-1, EnergyBins.data());
+   TH2D h2_Matching_Theta("h2_Matching_Theta", "h2_Matching_Theta", 2 * BinCount, 0, 2 * BinCount, EnergyBins.size()-1, EnergyBins.data());
+   TH2D h2_Matching_Z("h2_Matching_Z", "h2_Matching_Z", 2 * BinCount, 0, 2 * BinCount, EnergyBins.size()-1, EnergyBins.data());
 
    // 1D histograms
    TH1D h1_Matching_Z("h1_Matching_Z", "h1_Matching_Z", 2 * BinCount, 0, 2 * BinCount); 
@@ -174,7 +179,7 @@ int main(int argc, char *argv[])
       {
          // get the proper bins
          int BinThetaGen  = FindBin(Matched_DistanceGen[iPair], 2 * BinCount, Bins);
-         int BinEnergyGen = FindBin(Matched_E1E2Gen[iPair], EnergyBinCount, EnergyBins);
+         // int BinEnergyGen = FindBin(Matched_E1E2Gen[iPair], EnergyBinCount, EnergyBins);
          double zGen = (1-cos(Matched_DistanceGen[iPair]))/2; 
          int BinZGen = FindBin(zGen, 2*BinCount, zBins); 
 
@@ -182,14 +187,14 @@ int main(int argc, char *argv[])
          double EEC =  Matched_E1E2Gen[iPair]; 
          
          // fill the histograms
-         h2_Matching_Theta.Fill(BinThetaGen, BinEnergyGen, EEC); 
-         h2_Matching_Z.Fill(BinZGen, BinEnergyGen, EEC); 
+         h2_Matching_Theta.Fill(BinThetaGen, EEC, EEC); 
+         h2_Matching_Z.Fill(BinZGen, EEC, EEC); 
          h1_Matching_Z.Fill(BinZGen, EEC); 
          h1_Matching_Theta.Fill(BinThetaGen, EEC);
          if (!MakeMatchingEffCorrFactor)
          {
             double efficiency = matchingEffCorrFactor.efficiency((MatchingEffArgName=="z")? BinZGen: BinThetaGen,
-                                                                 BinEnergyGen);
+                                                                 EEC);
             // printf("argBin: %d, z: %.3f, eff: %.3f \n", BinZGen, zGen, efficiency);
             // printf("argBin: %d, normEEBin:%d, z: %.3f, normEE: %.3f, eff: %.3f \n", BinZGen, BinEnergyGen, zGen, EEC, efficiency);
             h1_MatchingCorrected_Z.Fill(BinZGen, EEC/efficiency); 
@@ -211,7 +216,7 @@ int main(int argc, char *argv[])
       {
          // get the proper bins
          int BinThetaGen  = FindBin(DistanceUnmatchedGen[iPair], 2 * BinCount, Bins);
-         int BinEnergyGen = FindBin(E1E2GenUnmatched[iPair]/(TotalE*TotalE), EnergyBinCount, EnergyBins);
+         // int BinEnergyGen = FindBin(E1E2GenUnmatched[iPair]/(TotalE*TotalE), EnergyBinCount, EnergyBins);
          double zGen = (1-cos(DistanceUnmatchedGen[iPair]))/2; 
          int BinZGen = FindBin(zGen, 2*BinCount, zBins); 
 
@@ -219,8 +224,8 @@ int main(int argc, char *argv[])
          double EEC =  E1E2GenUnmatched[iPair]/(TotalE*TotalE); 
          
          // fill the histograms
-         h2_BeforeMatching_Theta.Fill(BinThetaGen, BinEnergyGen, EEC); 
-         h2_BeforeMatching_Z.Fill(BinZGen, BinEnergyGen, EEC); 
+         h2_BeforeMatching_Theta.Fill(BinThetaGen, EEC, EEC); 
+         h2_BeforeMatching_Z.Fill(BinZGen, EEC, EEC); 
          h1_BeforeMatching_Z.Fill(BinZGen, EEC); 
          h1_BeforeMatching_Theta.Fill(BinThetaGen, EEC);
       }
