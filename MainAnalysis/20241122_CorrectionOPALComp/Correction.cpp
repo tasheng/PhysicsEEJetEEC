@@ -29,11 +29,13 @@ using namespace std;
 #include "EffCorrFactor.h"
 
 int FindBin(double Value, int NBins, double Bins[]); 
+double FindBinFraction(double Value, int NBins, double Bins[]); 
 void MakeCanvasZ(vector<TH1D > Histograms, TGraphErrors DataSyst, vector<string> Labels, string Output, string X, string Y, double WorldMin, double WorldMax, bool DoRatio, bool LogX);
 void SetPad(TPad &P); 
 void DivideByBin(TH1D &H, double Bins[]); 
 TGraphAsymmErrors getTheoryPlot();
 TGraphAsymmErrors getOPALPlot();  
+void NormalizeTGraphAsymmErrors(TGraphAsymmErrors* graph); 
 void MakeCanvasZTheory(vector<TH1D > Histograms, TGraphErrors DataSyst,  TGraphAsymmErrors TheorySyst, vector<string> Labels, string Output, string X, string Y, double WorldMin, double WorldMax, bool DoRatio, bool LogX); 
 
 
@@ -305,6 +307,20 @@ int FindBin(double Value, int NBins, double Bins[])
       if(Value < Bins[i])
          return i - 1;
    return NBins;
+}
+
+double FindBinFraction(double Value, int NBins, double Bins[])
+{
+   int binIndex = FindBin(Value, NBins, Bins);
+
+   // Handle out-of-range values
+   if (binIndex < 0 || binIndex >= NBins)
+      return -1.0; // Indicates out-of-range
+
+   // Calculate the fraction within the bin
+   double BinStart = Bins[binIndex];
+   double BinEnd = Bins[binIndex + 1];
+   return (Value - BinStart) / (BinEnd - BinStart);
 }
 
 /*
@@ -662,17 +678,25 @@ void MakeCanvasZTheory(vector<TH1D > Histograms, TGraphErrors DataSyst,  TGraphA
          H->Draw("same");
       }
 
+      
       for(int i = 1; i <= Histograms[0].GetNbinsX(); i++)
       {
          int iGraph = i-1;
-         TheorySyst.SetPoint(iGraph, 
+         // TheorySyst.SetPoint(iGraph, 
+         //                         TheorySyst.GetPointX(iGraph), 
+         //                         TheorySyst.GetPointY(iGraph)/Histograms[0].GetBinContent(i));
+         // TheorySyst.SetPointError( iGraph, 
+         //                         TheorySyst.GetErrorXlow(iGraph), TheorySyst.GetErrorXhigh(iGraph),
+         //                         TheorySyst.GetErrorYlow(iGraph)/Histograms[0].GetBinContent(i), TheorySyst.GetErrorYhigh(iGraph)/Histograms[0].GetBinContent(i));
+         std::cout << "theory x " << TheorySyst.GetPointX(iGraph) << " theory y " <<  TheorySyst.GetPointY(iGraph) << std::endl;
+          TheorySyst.SetPoint(iGraph, 
                                  TheorySyst.GetPointX(iGraph), 
-                                 TheorySyst.GetPointY(iGraph)/Histograms[0].GetBinContent(i));
+                                 TheorySyst.GetPointY(iGraph));
          TheorySyst.SetPointError( iGraph, 
                                  TheorySyst.GetErrorXlow(iGraph), TheorySyst.GetErrorXhigh(iGraph),
-                                 TheorySyst.GetErrorYlow(iGraph)/Histograms[0].GetBinContent(i), TheorySyst.GetErrorYhigh(iGraph)/Histograms[0].GetBinContent(i));
+                                 TheorySyst.GetErrorYlow(iGraph), TheorySyst.GetErrorYhigh(iGraph));
       }
-      TheorySyst.DrawClone("2 same");
+      //TheorySyst.DrawClone("2 same");
 
       G.Draw("l");
 
@@ -1099,7 +1123,7 @@ TGraphAsymmErrors getTheoryPlot(){
 
 TGraphAsymmErrors getOPALPlot(){
    // points for the central values of the theory curves
-   double centralvals[100][2] =  {{0.9, 3.24}, {2.7, 1.3}, {4.5, 1.38}, {6.3, 1.197}, {8.1, 0.974}, {9.9, 0.796}, {11.7, 0.661}, {13.5, 0.553}, {15.3, 0.461}, {17.1, 0.390}, {18.9, 0.334}, {20.7, 0.289}, {22.5, 0.255}, {24.3, 0.227}, {26.1, 0.206}, {27.9, 0.118}, {29.7, 0.174}, {31.5, 0.161}, {33.3, 0.150}, {35.1, 0.141}, {36.9, 0.133}, {38.7, 0.127}, {40.5, 0.121}, {42.3, 0.116}, {44.1, 0.110}, {45.9, 0.106}, {47.7, 0.102}, {49.5, 0.099}, {51.3, 0.096}, {53.1, 0.093}, {54.9, 0.091}, {56.7, 0.089}, {58.5, 0.087}, {60.3, 0.085}, {62.1, 0.083}, {63.9, 0.081}, {65.7, 0.081}, {71.1, 0.077}, {72.9, 0.076}, {74.7, 0.076}, {76.5, 0.075}, {78.3, 0.075}, {80.1, 0.075}, {81.9, 0.075}, {83.7, 0.074}, {85.5, 0.074}, {87.3, 0.074}, {89.1, 0.075}, {90.9, 0.076}, {92.7, 0.076}, {94.5, 0.076}, {96.3, 0.078}, {98.1, 0.078}, {99.9, 0.079}, {101.7, 0.080}, {103.5, 0.082}, {105.3, 0.083}, {107.1, 0.085}, {108.9, 0.087}, {110.7, 0.089}, {112.5, 0.091}, {114.3, 0.094}, {116.1, 0.096}, {117.9, 0.099}, {119.7, 0.102}, {121.5, 0.107}, {123.3, 0.110}, {125.1, 0.116}, {126.9, 0.121}, {128.7, 0.125}, {130.5, 0.131}, {132.3, 0.138}, {134.1, 0.146}, {135.9, 0.155}, {137.7, 0.164}, {1395, 0.174}, {141.3, 0.186}, {143.1, 0.186}, {143.1, 0.200}, {144.9, 0.213}, {146.7, 0.230}, {148.5, 0.250}, {150.3, 0.272}, {152.1, 0.299}, {153.9, 0.329}, {155.7, 0.365}, {157.5, 0.410}, {159.3, 0.457}, {161.1, 0.521}, {162.9, 0.595}, {164.7, 0.682}, {166.5, 0.783}, {168.3, 0.906}, {170.1, 1.049}, {171.9, 1.19}, {173.7, 1.31}, {175.5, 1.34}, {177.3, 1.12}, {179.1, 0.46}};
+   double centralvals[100][2] =  {{0.9, 3.24}, {2.7, 1.3}, {4.5, 1.38}, {6.3, 1.197}, {8.1, 0.974}, {9.9, 0.796}, {11.7, 0.661}, {13.5, 0.553}, {15.3, 0.461}, {17.1, 0.390}, {18.9, 0.334}, {20.7, 0.289}, {22.5, 0.255}, {24.3, 0.227}, {26.1, 0.206}, {27.9, 0.188}, {29.7, 0.174}, {31.5, 0.161}, {33.3, 0.150}, {35.1, 0.141}, {36.9, 0.133}, {38.7, 0.127}, {40.5, 0.121}, {42.3, 0.116}, {44.1, 0.110}, {45.9, 0.106}, {47.7, 0.102}, {49.5, 0.099}, {51.3, 0.096}, {53.1, 0.093}, {54.9, 0.091}, {56.7, 0.089}, {58.5, 0.087}, {60.3, 0.085}, {62.1, 0.083}, {63.9, 0.081}, {65.7, 0.081}, {71.1, 0.077}, {72.9, 0.076}, {74.7, 0.076}, {76.5, 0.075}, {78.3, 0.075}, {80.1, 0.075}, {81.9, 0.075}, {83.7, 0.074}, {85.5, 0.074}, {87.3, 0.074}, {89.1, 0.075}, {90.9, 0.076}, {92.7, 0.076}, {94.5, 0.076}, {96.3, 0.078}, {98.1, 0.078}, {99.9, 0.079}, {101.7, 0.080}, {103.5, 0.082}, {105.3, 0.083}, {107.1, 0.085}, {108.9, 0.087}, {110.7, 0.089}, {112.5, 0.091}, {114.3, 0.094}, {116.1, 0.096}, {117.9, 0.099}, {119.7, 0.102}, {121.5, 0.107}, {123.3, 0.110}, {125.1, 0.116}, {126.9, 0.121}, {128.7, 0.125}, {130.5, 0.131}, {132.3, 0.138}, {134.1, 0.146}, {135.9, 0.155}, {137.7, 0.164}, {139.5, 0.174}, {141.3, 0.186}, {143.1, 0.200}, {144.9, 0.213}, {146.7, 0.230}, {148.5, 0.250}, {150.3, 0.272}, {152.1, 0.299}, {153.9, 0.329}, {155.7, 0.365}, {157.5, 0.410}, {159.3, 0.457}, {161.1, 0.521}, {162.9, 0.595}, {164.7, 0.682}, {166.5, 0.783}, {168.3, 0.906}, {170.1, 1.049}, {171.9, 1.19}, {173.7, 1.31}, {175.5, 1.34}, {177.3, 1.12}, {179.1, 0.46}};
    
    // now need to translate the thetas to zs
    const int BinCount = 100;
@@ -1114,24 +1138,34 @@ TGraphAsymmErrors getOPALPlot(){
 
    TH1D HTemp("HTemp", "HTemp", 200, 0, 200); 
 
-   TGraphAsymmErrors graph(&HTemp); 
+   TGraphAsymmErrors graph(99); 
    
-
-   for(int i = 1; i < 100; i++)
+   // first loop - fill histo
+   for(int i = 1; i < 99; i++)
    {
       int iGraph = i-1;
-      double zval = (1-cos(centralvals[iGraph][0]))/2; 
-      double binWidth = (centralvals[iGraph+1][0] - centralvals[iGraph][0])/2; 
+      // get the central value for the data-point in degrees
+      double thetaDegrees = centralvals[iGraph][0]; 
+      // then convert it to radians
+      double thetaRadians = (TMath::Pi()*thetaDegrees)/180; 
+      // then get the z value
+      double zval = (1-cos(thetaRadians))/2; 
+      // find the bin in the histogram that this should go in so that it can be plotted correctly
       int bin = FindBin(zval, 2*BinCount, zBins);
-      std::cout << "theta: " << centralvals[iGraph][0] << " zval: " << zval << " bin " << bin << std::endl;
-      double sumVal = centralvals[iGraph][1] * (2/sin(centralvals[iGraph][0])); 
-      sumVal = sumVal*binWidth; 
-      // now we need to divide by the theta bin width
-      double binWidthZ = (zBins[bin+1] - zBins[bin])/2; 
-      sumVal = sumVal/binWidthZ; 
-      graph.SetPoint(iGraph, HTemp.GetBinCenter(bin), centralvals[iGraph][1]);
+      // find the fraction within the bin so that it is drawn at the correct point (i.e. bin width change does not matter)
+      double binFraction = FindBinFraction(zval, 2*BinCount, zBins); 
+      // get the sum val using the jacobian
+      double sumVal = centralvals[iGraph][1] * (2.0/sin(thetaRadians)); 
+      std::cout << "theta in degrees is " << thetaDegrees << " z value is " << zval << " bin " << bin  << " sumVal is " << sumVal << std::endl;
+      // set the correct point on the graph
+      graph.SetPoint(iGraph, HTemp.GetBinLowEdge(bin)+binFraction, sumVal);
+      // for now don't worry about errors
       //graph.SetPointError(iGraph, HTemp.GetBinWidth(i)/2, HTemp.GetBinWidth(i)/2, centralvals[iGraph][1] - err_low[iGraph][1], err_high[iGraph][1] - centralvals[iGraph][1]);
    }
+
+   // graph.Print(); 
+   //NormalizeTGraphAsymmErrors(graph); 
+
 
    static vector<int> Colors = GetCVDColors6();
 
@@ -1148,3 +1182,49 @@ TGraphAsymmErrors getOPALPlot(){
 }
 
 
+void NormalizeTGraphAsymmErrors(TGraphAsymmErrors* graph)
+{
+    if (!graph) {
+        std::cerr << "Graph is null!" << std::endl;
+        return;
+    }
+
+    int nPoints = graph->GetN();
+    double* x = graph->GetX();
+    double* y = graph->GetY();
+
+    double totalArea = 0.0;
+
+    // Compute the total area using the trapezoidal rule
+    for (int i = 0; i < nPoints - 1; i++) {
+        double xLow = x[i];
+        double xHigh = x[i + 1];
+        double width = xHigh - xLow;
+
+        double avgHeight = 0.5 * (y[i] + y[i + 1]);
+        totalArea += avgHeight * width;
+    }
+
+    // Normalize the y-values and errors
+    if (totalArea == 0) {
+        std::cerr << "Total area is zero! Cannot normalize." << std::endl;
+        return;
+    }
+
+    for (int i = 0; i < nPoints; i++) {
+        double yValue = y[i];
+        double yErrLow = graph->GetErrorYlow(i);
+        double yErrHigh = graph->GetErrorYhigh(i);
+
+        // Scale y-values and errors
+        yValue /= totalArea;
+        yErrLow /= totalArea;
+        yErrHigh /= totalArea;
+
+        // Update the graph with normalized values
+        graph->SetPoint(i, x[i], yValue);
+        graph->SetPointError(i, graph->GetErrorXlow(i), graph->GetErrorXhigh(i), yErrLow, yErrHigh);
+    }
+
+    std::cout << "Normalization complete. Total area is now unity." << std::endl;
+}

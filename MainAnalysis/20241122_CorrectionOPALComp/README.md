@@ -1,0 +1,1 @@
+This version of the code was not used in the end. Instead code used in 20241211_OpalThetaComp was used after it was realized that the OPAL measurement uses a different definition of the EEC than we do.
