@@ -34,6 +34,7 @@ int main(int argc, char *argv[]);
 TH1D getOPALPlot(); 
 TGraphAsymmErrors getOPALGraph(); 
 void DivideByBin(TH1D &H, double Bins[]);
+void calculateWeights(TH1* histogram) ; 
 int FindBin(double Value, int NBins, double Bins[]); 
 void MakeCanvas(vector<TH1D *> Histograms, vector<string> Labels, string Output,
    string X, string Y, double WorldMin, double WorldMax, bool DoRatio, bool LogX); 
@@ -56,7 +57,7 @@ int main(int argc, char *argv[])
    double LinearBins[2*BinCount+1];
    for(int i = 0; i <= 2 * BinCount; i++) LinearBins[i] = 180.0 / (2 * BinCount) * i;
    TH1D HLinearEEC2("HLinearEEC2", ";EEC_{2};", 2 * BinCount, LinearBins);
-
+  
    int BinCountDoubleLog = 100; 
    double Bins[2*BinCountDoubleLog+1];
    double BinMin = 0.002;
@@ -69,6 +70,9 @@ int main(int argc, char *argv[])
 
    TH1D HEEC2("HEEC2", ";EEC_{2};", 2 * BinCountDoubleLog, 0, 2 * BinCountDoubleLog);
 
+   // set the Sumw2 before filling
+   HLinearEEC2.Sumw2();
+   HEEC2.Sumw2();
 
    // include the total energy 
    double TotalE = 91.1876;
@@ -91,10 +95,12 @@ int main(int argc, char *argv[])
 
       // fill the four vectors
       vector<FourVector> PGen;
+      vector<double> W; 
       for(int i = 0; i < MGen->nParticle; i++){ 
         // charged particle selection 
-        if(MGen->charge[i] != 0 && MGen->highPurity[i] == false) continue;
+        //if(MGen->charge[i] != 0 && MGen->highPurity[i] == false) continue;
         PGen.push_back(MGen->P[i]);
+        W.push_back(MGen->particleWeight);
       }
       //std::cout << "Pgen size " <<  PGen.size() << std::endl;
       // now create the E2C
@@ -107,30 +113,31 @@ int main(int argc, char *argv[])
 
             // handle the linear case
             int bin = FindBin(angleInDegrees, 2*BinCount, LinearBins); 
-            HLinearEEC2.Fill(angleInDegrees,Gen1[0]*Gen2[0]/(TotalE*TotalE));
+            HLinearEEC2.Fill(angleInDegrees,(Gen1[0]*Gen2[0]*W.at(i)*W.at(j))/(TotalE*TotalE));
 
             // handle the double log case
             int binDoubleLog = FindBin(angle, 2*BinCountDoubleLog, Bins); 
-            HEEC2.Fill(binDoubleLog, Gen1[0]*Gen2[0]/(TotalE*TotalE)); 
+            HEEC2.Fill(binDoubleLog, (Gen1[0]*Gen2[0]*W.at(i)*W.at(j))/(TotalE*TotalE)); 
          }
       } 
    }// end loop over the number of events
    static vector<int> Colors = GetCVDColors6();
-   HLinearEEC2.Scale(1.0/EntryCount);
+   DivideByBin(HEEC2, Bins); 
    DivideByBin(HLinearEEC2, LinearBins);
+
+
+   HLinearEEC2.Scale(1.0/EntryCount);
    HLinearEEC2.SetMarkerColor(Colors[0]);
    HLinearEEC2.SetMarkerStyle(20);
    HLinearEEC2.SetLineColor(Colors[0]);
    // to be consistent with opal, need to convert sum on the y-axis to radians
-   HLinearEEC2.Scale(180/M_PI);
+   HLinearEEC2.Scale(180.0/M_PI);
    HLinearEEC2.SetLineWidth(2); 
 
    HEEC2.Scale(1.0/EntryCount); 
-   DivideByBin(HEEC2, Bins); 
    HEEC2.SetMarkerColor(Colors[0]);
    HEEC2.SetMarkerStyle(20);
    HEEC2.SetLineColor(Colors[0]);
-
    
    TH1D opalLinear = (TH1D)getOPALPlot(); 
    vector<TH1D*> hists; 
@@ -227,11 +234,11 @@ TGraphAsymmErrors getOPALGraph(){
       double thetaRadiansDown;
 
       // handle lower edge case 
-      if(i == 1) thetaRadiansDown = 0.000002;
+      if(i == 1) thetaRadiansDown = 0.00000000002;
       else thetaRadiansDown = centralvals[iGraph-1][0]*(TMath::Pi()/180.0); 
 
       // handle upper edge case
-      if(i==100) thetaRadiansUp = TMath::Pi() - 0.000002; 
+      if(i==100) thetaRadiansUp = TMath::Pi() - 0.00000000002; 
       else thetaRadiansUp = centralvals[iGraph+1][0]*(TMath::Pi()/180.0);  
 
       int bin     = FindBin(thetaRadians, 2*BinCountDoubleLog, Bins);
@@ -243,12 +250,11 @@ TGraphAsymmErrors getOPALGraph(){
       double binFractionDown = FindBinFraction(thetaRadiansDown, 2*BinCountDoubleLog, Bins); 
 
       // set the point, not worrying about the errors. 
-      graph.SetPoint(iGraph, HTempDoubleLog.GetBinLowEdge(bin)+binFraction, centralvals[iGraph][1]); 
+      graph.SetPoint(iGraph, HTempDoubleLog.GetBinLowEdge(bin+1)+binFraction, centralvals[iGraph][1]); 
       
       // calculate what the error should be
-      double binWidthRadiansUp = (HTempDoubleLog.GetBinLowEdge(binUp)+binFractionUp) - (HTempDoubleLog.GetBinLowEdge(bin)+binFraction); 
-      double binWidthRadiansDown =  (HTempDoubleLog.GetBinLowEdge(bin)+binFraction) - (HTempDoubleLog.GetBinLowEdge(binDown)+binFractionDown); 
-      std::cout << "iGraph: " << iGraph << " with Lower Edge: " << HTempDoubleLog.GetBinLowEdge(bin)+binFraction - binWidthRadiansDown/2.0 << " and upper edge: " <<   HTempDoubleLog.GetBinLowEdge(bin)+binFraction + binWidthRadiansUp/2.0 << std::endl; 
+      double binWidthRadiansUp = (HTempDoubleLog.GetBinLowEdge(binUp+1)+binFractionUp) - (HTempDoubleLog.GetBinLowEdge(bin+1)+binFraction); 
+      double binWidthRadiansDown =  (HTempDoubleLog.GetBinLowEdge(bin+1)+binFraction) - (HTempDoubleLog.GetBinLowEdge(binDown+1)+binFractionDown); 
       graph.SetPointError(iGraph, binWidthRadiansDown/2.0 , binWidthRadiansUp/2.0, errs[iGraph][1], errs[iGraph][1]); 
 
    }
@@ -284,7 +290,6 @@ int FindBin(double Value, int NBins, double Bins[])
          return i - 1;
    return NBins;
 }
-
 
 void MakeCanvas(vector<TH1D *> Histograms, vector<string> Labels, string Output,
    string X, string Y, double WorldMin, double WorldMax, bool DoRatio, bool LogX)
@@ -390,10 +395,14 @@ void MakeCanvas(vector<TH1D *> Histograms, vector<string> Labels, string Output,
       G2.SetPoint(1, 99999, 1);
       G2.Draw("l");
    }
+
+   double xRange;  
+   if(!LogX) xRange =  180.0; 
+   else xRange = M_PI; 
    
    double BinMin    = 0.002;
-   double BinMiddle = 180 / 2;
-   double BinMax    = 180 - 0.002;
+   double BinMiddle = xRange / 2;
+   double BinMax    = xRange - 0.002;
 
    Canvas.cd();
    TGaxis X1(MarginL, MarginB, MarginL + PadWidth / 2, MarginB, BinMin, BinMiddle, 510, "GS");
@@ -402,10 +411,11 @@ void MakeCanvas(vector<TH1D *> Histograms, vector<string> Labels, string Output,
    TGaxis X4(MarginL + PadWidth, MarginB + PadRHeight, MarginL + PadWidth / 2, MarginB + PadRHeight, BinMin, BinMiddle, 510, "+-GS");
    TGaxis Y1(MarginL, MarginB, MarginL, MarginB + PadRHeight, WorldRMin, WorldRMax, 505, "");
    TGaxis Y2(MarginL, MarginB + PadRHeight, MarginL, MarginB + PadRHeight + PadHeight, WorldMin, WorldMax, 510, "G");
-   
-   TGaxis XL1(MarginL, MarginB, MarginL + PadWidth, MarginB, 0, 180, 510, "S");
-   TGaxis XL2(MarginL, MarginB + PadRHeight, MarginL + PadWidth, MarginB + PadRHeight, 0, 180, 510, "+-S");
 
+   TGaxis XL1(MarginL, MarginB, MarginL + PadWidth, MarginB, 0, xRange, 510, "S");
+   TGaxis XL2(MarginL, MarginB + PadRHeight, MarginL + PadWidth, MarginB + PadRHeight, 0, xRange, 510, "+-S");
+
+ 
    Y1.SetLabelFont(42);
    Y2.SetLabelFont(42);
    XL1.SetLabelFont(42);

@@ -1,1 +1,1 @@
-./Execute --Input $ProjectBase/Samples/ALEPHMC/LEP1MCMerged.root --Gen tgenBefore --Fraction 0.05
+./Execute --Input $ProjectBase/Samples/ALEPHMC/LEP1MC1994_recons_aftercut-001.root --Gen tgenBefore --Fraction 1.0
