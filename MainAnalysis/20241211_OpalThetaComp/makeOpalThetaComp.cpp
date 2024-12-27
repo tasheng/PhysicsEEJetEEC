@@ -74,10 +74,6 @@ int main(int argc, char *argv[])
    HLinearEEC2.Sumw2();
    HEEC2.Sumw2();
 
-   // include the total energy 
-   double TotalE = 91.1876;
-
-
 
   // loop over the number of events
    int EntryCount = MGen->GetEntries()*Fraction;
@@ -96,11 +92,14 @@ int main(int argc, char *argv[])
       // fill the four vectors
       vector<FourVector> PGen;
       vector<double> W; 
+      // define the total energy per event used to normalize the ENC
+      double totalPartEnergy = 0.0; 
       for(int i = 0; i < MGen->nParticle; i++){ 
         // charged particle selection 
         //if(MGen->charge[i] != 0 && MGen->highPurity[i] == false) continue;
         PGen.push_back(MGen->P[i]);
         W.push_back(MGen->particleWeight);
+        totalPartEnergy += MGen->P[i][0]; 
       }
       //std::cout << "Pgen size " <<  PGen.size() << std::endl;
       // now create the E2C
@@ -113,11 +112,11 @@ int main(int argc, char *argv[])
 
             // handle the linear case
             int bin = FindBin(angleInDegrees, 2*BinCount, LinearBins); 
-            HLinearEEC2.Fill(angleInDegrees,(Gen1[0]*Gen2[0]*W.at(i)*W.at(j))/(TotalE*TotalE));
+            HLinearEEC2.Fill(angleInDegrees,(Gen1[0]*Gen2[0]*W.at(i)*W.at(j))/(totalPartEnergy*totalPartEnergy));
 
             // handle the double log case
             int binDoubleLog = FindBin(angle, 2*BinCountDoubleLog, Bins); 
-            HEEC2.Fill(binDoubleLog, (Gen1[0]*Gen2[0]*W.at(i)*W.at(j))/(TotalE*TotalE)); 
+            HEEC2.Fill(binDoubleLog, (Gen1[0]*Gen2[0]*W.at(i)*W.at(j))/(totalPartEnergy*totalPartEnergy)); 
          }
       } 
    }// end loop over the number of events
