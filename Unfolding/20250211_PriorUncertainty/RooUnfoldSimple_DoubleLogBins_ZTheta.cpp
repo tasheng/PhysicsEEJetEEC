@@ -67,7 +67,7 @@ int FindBin(double Value, int NBins, double Bins[])
 // Unfolding for Z and Theta
 //==============================================================================
 
-void RooUnfoldSimple_DoubleLogBins_ZTheta(std::string date = "01092025"){
+void RooUnfoldSimple_DoubleLogBins_ZTheta(std::string date = "02122025"){
 
     //------------------------------------
    // define the binning
@@ -197,6 +197,10 @@ void RooUnfoldSimple_DoubleLogBins_ZTheta(std::string date = "01092025"){
   TFile *inputmc =TFile::Open(fnamemc);
   TTree *mc=(TTree*)inputmc->Get("PairTree"); 
 
+  TFile* reweightFile = TFile::Open("ReweightingUncertainty_01092025.roots"); 
+  TH2D* reweightFactors_Theta = (TH2D*)reweightFile->Get("reweightFactors_Theta"); 
+
+
   Int_t nEv2=mc->GetEntries();
   std::cout << "nEvents in the mc " << nEv2 << std::endl;
   //------------------------------------------------
@@ -228,13 +232,16 @@ void RooUnfoldSimple_DoubleLogBins_ZTheta(std::string date = "01092025"){
       if(BinZMeasured > 200 || BinZGen > 200 || BinEnergyGen > 200 || BinEnergyRecoMC > 200 || BinThetaGenMC > 200 || BinThetaMeasuredMC > 200){
         std::cout << "Theta " << thetaRecoMC[i] << " ZData " << zMeasuredMC << " EnergyData " << e1e2recoMC[i] << std::endl;
       } 
+      
       closureCheck_Theta->Fill(BinThetaGenMC,e1e2gen[i]);
       h2true_Theta->Fill(BinThetaGenMC, e1e2gen[i]);
       h2true_Z->Fill(BinZGen, e1e2gen[i]); 
       closureCheck_Z->Fill(BinZGen, e1e2gen[i]);
       h2smeared_Theta->Fill(BinThetaMeasuredMC,e1e2recoMC[i]);
       h2smeared_Z->Fill(BinZMeasured, e1e2recoMC[i]); 
-      response_Theta.Fill(BinThetaMeasuredMC, e1e2recoMC[i],BinThetaGenMC,e1e2gen[i]);
+      // reweight the response
+      double reweightFactor = reweightFactors_Theta->GetBinContent(BinThetaMeasuredMC, BinEnergyRecoMC); 
+      response_Theta.Fill(BinThetaMeasuredMC, e1e2recoMC[i],BinThetaGenMC,e1e2gen[i]*reweightFactor);
       response_Z.Fill(BinZMeasured, e1e2recoMC[i], BinZGen, e1e2gen[i]);
     }
   }
@@ -246,7 +253,7 @@ void RooUnfoldSimple_DoubleLogBins_ZTheta(std::string date = "01092025"){
 
 
 
-  TFile *fout = new TFile(Form("unfoldingE2C_DataUnfolding_DoubleLogBinning_BinningOption1_%s.root",date.c_str()),"RECREATE");
+  TFile *fout = new TFile(Form("unfoldingE2C_DataUnfolding_DoubleLogBinning_BinningOption1_Reweighted%s.root",date.c_str()),"RECREATE");
   fout->cd();
   h2raw_Theta->Write();
   h2raw_Z->Write();
@@ -291,7 +298,7 @@ void RooUnfoldSimple_DoubleLogBins_ZTheta(std::string date = "01092025"){
     HTrue_Z->Write(); 
 
   // int iter = 2;
-  for(int iter = 4; iter < 7; iter++){
+  for(int iter = 3; iter < 4; iter++){
 
     std::cout << "Unfolding for theta iter " << iter << std::endl;
     // -------------------------------
