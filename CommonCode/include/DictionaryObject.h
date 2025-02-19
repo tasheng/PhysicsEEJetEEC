@@ -4,7 +4,7 @@ namespace
 {
    namespace
    {
-      std::vector<std::vector<float>> DICT1;
+      std::vector<std::vector<float>> DICT1; 
    }
 }
 

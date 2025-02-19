@@ -71,7 +71,7 @@ public:
    float         rap[MAXPARTICLE];
    float         eta[MAXPARTICLE];
    float         theta[MAXPARTICLE];
-   float         phi[MAXPARTICLE];
+   float         phi[MAXPARTICLE]; 
    float         mass[MAXPARTICLE];
    short         charge[MAXPARTICLE];
    bool          isCharged[MAXPARTICLE];
