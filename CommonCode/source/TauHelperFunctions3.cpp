@@ -646,9 +646,9 @@ double GetAngle(FourVector P1, FourVector P2)
 {
    double V = P1.SpatialDot(P2) / P1.GetP() / P2.GetP();
    if(V >= 1)
-      return M_PI;
+      return 0;
    if(V <= -1)
-      return -M_PI
+      return M_PI;
    return acos(V);
 }
 //----------------------------------------------------------------------------
