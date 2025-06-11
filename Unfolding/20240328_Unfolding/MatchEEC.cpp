@@ -267,7 +267,7 @@ int main(int argc, char *argv[])
     
 
       // place a cut on the number of charged hadrons if you want to make the mult plot
-      // if( MGen.nChargedHadronsHP < 40)continue; 
+      // if( MGen.nChargedParticleHP < 40)continue; 
      
 
       vector<FourVector> PGen, PReco;
@@ -792,19 +792,19 @@ void MatchingPerformance(string& matchedRstRootName, string& rstDirName,
       MGen.GetEntry(iEvent);
       MReco.GetEntry(iEvent);
 
-      // printf("%d %d %d %d %d %d\n", MGen.nParticle, MGen.nChargedHadronsHP, MReco.nParticle, MReco.nChargedHadronsHP, (*nParticles), nMatchedTracksInOneEvent);
-      nGenTracks       += MGen.nChargedHadronsHP;
-      nRecoTracks      += MReco.nChargedHadronsHP;
+      // printf("%d %d %d %d %d %d\n", MGen.nParticle, MGen.nChargedParticleHP, MReco.nParticle, MReco.nChargedParticleHP, (*nParticles), nMatchedTracksInOneEvent);
+      nGenTracks       += MGen.nChargedParticleHP;
+      nRecoTracks      += MReco.nChargedParticleHP;
       nMatchedTracks   += nMatchedTracksInOneEvent;
-      nUnmatchedTracks += (MReco.nChargedHadronsHP-nMatchedTracksInOneEvent);
+      nUnmatchedTracks += (MReco.nChargedParticleHP-nMatchedTracksInOneEvent);
       nMatchedTracks_1p0   += nMatchedTracksInOneEvent_1p0;
-      nUnmatchedTracks_1p0 += (MReco.nChargedHadronsHP-nMatchedTracksInOneEvent_1p0);
+      nUnmatchedTracks_1p0 += (MReco.nChargedParticleHP-nMatchedTracksInOneEvent_1p0);
       nMatchedTracks_0p4   += nMatchedTracksInOneEvent_0p4;
-      nUnmatchedTracks_0p4 += (MReco.nChargedHadronsHP-nMatchedTracksInOneEvent_0p4);
+      nUnmatchedTracks_0p4 += (MReco.nChargedParticleHP-nMatchedTracksInOneEvent_0p4);
       nMatchedTracks_0p2   += nMatchedTracksInOneEvent_0p2;
-      nUnmatchedTracks_0p2 += (MReco.nChargedHadronsHP-nMatchedTracksInOneEvent_0p2);
+      nUnmatchedTracks_0p2 += (MReco.nChargedParticleHP-nMatchedTracksInOneEvent_0p2);
       nMatchedTracks_0p1   += nMatchedTracksInOneEvent_0p1;
-      nUnmatchedTracks_0p1 += (MReco.nChargedHadronsHP-nMatchedTracksInOneEvent_0p1);
+      nUnmatchedTracks_0p1 += (MReco.nChargedParticleHP-nMatchedTracksInOneEvent_0p1);
 
    } // end loop over the number of events
 

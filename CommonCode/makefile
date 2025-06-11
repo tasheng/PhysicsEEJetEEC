@@ -1,7 +1,7 @@
 
 default: all
 
-all: prepare library/Messenger.o library/BasicUtilities.o library/TauHelperFunctions3.o library/CATree.o library/Dictionary.o library/DrawRandom.o 
+all: prepare library/Messenger.o library/BasicUtilities.o library/TauHelperFunctions3.o library/CATree.o library/DrawRandom.o 
 
 prepare:
 	mkdir -p library/

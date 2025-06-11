@@ -171,6 +171,7 @@ public:
    float         nChargedHadronsHP_Corrected;
    int           nChargedHadrons_GT0p4;
    int           nChargedHadrons_GT0p4Thrust;
+   int           nChargedParticleHP;
    float         Thrust;
    float         TTheta;
    float         TPhi;

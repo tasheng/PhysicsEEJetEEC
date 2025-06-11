@@ -375,6 +375,8 @@ bool ParticleTreeMessenger::Initialize()
       Tree->SetBranchAddress("nChargedHadrons_GT0p4", &nChargedHadrons_GT0p4);
    if(Tree->GetBranch("nChargedHadrons_GT0p4Thrust") != nullptr)
       Tree->SetBranchAddress("nChargedHadrons_GT0p4Thrust", &nChargedHadrons_GT0p4Thrust);
+   if(Tree->GetBranch("nChargedParticleHP") != nullptr)
+      Tree->SetBranchAddress("nChargedParticleHP", &nChargedParticleHP);
    if(Tree->GetBranch("Thrust") != nullptr)
       Tree->SetBranchAddress("Thrust", &Thrust);
    if(Tree->GetBranch("TTheta") != nullptr)
