@@ -392,6 +392,7 @@ int main(int argc, char *argv[])
          RecoPhi[Count] = Reco.GetPhi();
          RecoTheta[Count] = Reco.GetTheta();
          Distance[Count] = GetAngle(Gen, Reco);
+         Metric[Count] = MatchingMetric(Gen, Reco);
          DeltaPhi[Count] = GetDPhi(Gen,Reco); 
          DeltaE[Count] = Gen[0] - Reco[0]; 
          DeltaTheta[Count] = Gen.GetTheta() - Reco.GetTheta(); 
@@ -401,7 +402,47 @@ int main(int argc, char *argv[])
          RecoEfficiency[Count] = 1/Efficiency;
          Count = Count + 1;
       }
- 
+
+      // unmatched Reco
+      for (auto iReco = 0; iReco < PReco.size(); ++iReco) {
+        bool found = false;
+        for (const auto &kv : Matching) {
+          if (kv.second == iReco) {
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          int closest = 0;
+          double min_metric = MatchingMetric(0, PReco.at(iReco));
+          for (auto iGen = 0; iGen < PGen.size(); ++iGen) {
+            double metric = MatchingMetric(PGen.at(iGen), PReco.at(iReco));
+            if (metric < min_metric) {
+              min_metric = metric;
+              closest = iGen;
+            }
+          }
+          auto Reco = PReco.at(iReco);
+          auto Gen = PGen.at(iGen);
+
+          RecoE[Count] = Reco[0];
+          RecoX[Count] = Reco[1];
+          RecoY[Count] = Reco[2];
+          RecoZ[Count] = Reco[3];
+          RecoRapidity[Count] = Reco.GetRapidity();
+          RecoEta[Count] = Reco.GetEta();
+          RecoPhi[Count] = Reco.GetPhi();
+          RecoTheta[Count] = Reco.GetTheta();
+          Distance[Count] = GetAngle(Gen, Reco);
+          Metric[Count] = MatchingMetric(Gen, Reco);
+          DeltaPhi[Count] = GetDPhi(Gen, Reco);
+          DeltaE[Count] = Gen[0] - Reco[0];
+          DeltaTheta[Count] = Gen.GetTheta() - Reco.GetTheta();
+          Count = Count + 1;
+          ++NParticle;
+        }
+      }
+
       OutputTree.Fill(); // fill the tree
 
       // now fill the tree for the matched pairs
