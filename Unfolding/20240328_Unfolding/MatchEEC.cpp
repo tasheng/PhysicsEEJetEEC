@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
 
    alephTrkEfficiency efficiencyCorrector;
    // variables for the matched tree
-   int NParticle, eventID; 
+   int NParticle, eventID, NReco, NGen;
    double GenE[MAX], GenX[MAX], GenY[MAX], GenZ[MAX];
    double RecoE[MAX], RecoX[MAX], RecoY[MAX], RecoZ[MAX];
    double Distance[MAX], DeltaPhi[MAX], Metric[MAX], DeltaE[MAX], DeltaTheta[MAX];
@@ -157,8 +157,11 @@ int main(int argc, char *argv[])
    int RecoPWFlag[MAX];
    double GenEta[MAX], GenPhi[MAX], GenTheta[MAX], GenRapidity[MAX];
    double RecoEfficiency[MAX];
+   int RecoAssigned[MAX];
    OutputTree.Branch("EventID", &eventID, "EventID/I");
    OutputTree.Branch("NParticle", &NParticle, "NParticle/I"); 
+   OutputTree.Branch("NReco", &NReco, "NReco/I"); 
+   OutputTree.Branch("NGen", &NGen, "NGen/I"); 
    OutputTree.Branch("GenE", &GenE, "GenE[NParticle]/D");
    OutputTree.Branch("GenX", &GenX, "GenX[NParticle]/D");
    OutputTree.Branch("GenY", &GenY, "GenY[NParticle]/D");
@@ -182,6 +185,7 @@ int main(int argc, char *argv[])
    OutputTree.Branch("GenRapidity", &GenRapidity, "GenRapidity[NParticle]/D");
    OutputTree.Branch("RecoPwFlag", &RecoPWFlag, "RecoPWFlag[NParticle]/I");
    OutputTree.Branch("RecoEfficiency", &RecoEfficiency, "RecoEfficiency[NParticle]/D");
+   OutputTree.Branch("RecoAssigned", &RecoAssigned, "RecoAssigned[NParticle]/I");
 
    // valiables for the pair tree
    int NPair;
@@ -251,6 +255,9 @@ int main(int argc, char *argv[])
    Bar.SetStyle(-1); 
    for(int iE = 0; iE < EntryCount; iE++) 
    {
+     // if (iE > 1000) {
+     //   break;
+     // }
 
       MGen.GetEntry(iE);
       MReco.GetEntry(iE);
@@ -366,6 +373,8 @@ int main(int argc, char *argv[])
       map<int, int> Matching = MatchJetsHungarian(MatchingMetric, PGen, PReco);
       int Count = 0;
       NParticle = Matching.size();
+      NReco = PReco.size();
+      NGen = PGen.size();
       eventID = MGen.EventNo;
       for(auto iter : Matching)
       {
@@ -398,8 +407,9 @@ int main(int argc, char *argv[])
          DeltaTheta[Count] = Gen.GetTheta() - Reco.GetTheta(); 
          double Efficiency; 
          if (Reco.GetPT() <  0.2) Efficiency = 1;
-         else Efficiency = efficiencyCorrector.efficiency(Reco.GetTheta(), Reco.GetPhi(), Reco.GetPT(), MReco.nChargedHadronsHP);
+         else Efficiency = efficiencyCorrector.efficiency(Reco.GetTheta(), Reco.GetPhi(), Reco.GetPT(), MReco.nChargedParticleHP);
          RecoEfficiency[Count] = 1/Efficiency;
+         RecoAssigned[Count] = 1;
          Count = Count + 1;
       }
 
@@ -414,7 +424,7 @@ int main(int argc, char *argv[])
         }
         if (!found) {
           int closest = 0;
-          double min_metric = MatchingMetric(0, PReco.at(iReco));
+          double min_metric = MatchingMetric(PGen.at(0), PReco.at(iReco));
           for (auto iGen = 0; iGen < PGen.size(); ++iGen) {
             double metric = MatchingMetric(PGen.at(iGen), PReco.at(iReco));
             if (metric < min_metric) {
@@ -423,7 +433,7 @@ int main(int argc, char *argv[])
             }
           }
           auto Reco = PReco.at(iReco);
-          auto Gen = PGen.at(iGen);
+          auto Gen = PGen.at(closest);
 
           RecoE[Count] = Reco[0];
           RecoX[Count] = Reco[1];
@@ -438,6 +448,7 @@ int main(int argc, char *argv[])
           DeltaPhi[Count] = GetDPhi(Gen, Reco);
           DeltaE[Count] = Gen[0] - Reco[0];
           DeltaTheta[Count] = Gen.GetTheta() - Reco.GetTheta();
+          RecoAssigned[Count] = 0;
           Count = Count + 1;
           ++NParticle;
         }
