@@ -672,6 +672,18 @@ double GetDPhi(FourVector P1, FourVector P2)
    return DPhi;
 }
 //----------------------------------------------------------------------------
+double GetDTheta(FourVector P1, FourVector P2)
+{
+   double DTheta = P1.GetTheta() - P2.GetTheta();
+
+   if(DTheta > PI)
+      DTheta = 2 * PI - DTheta;
+   if(DTheta < -PI)
+      DTheta = DTheta + 2 * PI;
+
+   return DTheta;
+}
+//----------------------------------------------------------------------------
 double EPS(FourVector A, FourVector B, FourVector C, FourVector D)
 {
    double Result = 0;
