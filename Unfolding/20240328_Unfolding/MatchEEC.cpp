@@ -157,7 +157,8 @@ int main(int argc, char *argv[])
    int RecoPWFlag[MAX];
    double GenEta[MAX], GenPhi[MAX], GenTheta[MAX], GenRapidity[MAX];
    double RecoEfficiency[MAX];
-   int RecoAssigned[MAX];
+   int RecoAssigned[MAX], IsReco[MAX], IsGen[MAX];
+   double MinDeltaPhi[MAX], MinDeltaTheta[MAX];
    OutputTree.Branch("EventID", &eventID, "EventID/I");
    OutputTree.Branch("NParticle", &NParticle, "NParticle/I"); 
    OutputTree.Branch("NReco", &NReco, "NReco/I"); 
@@ -186,6 +187,10 @@ int main(int argc, char *argv[])
    OutputTree.Branch("RecoPwFlag", &RecoPWFlag, "RecoPWFlag[NParticle]/I");
    OutputTree.Branch("RecoEfficiency", &RecoEfficiency, "RecoEfficiency[NParticle]/D");
    OutputTree.Branch("RecoAssigned", &RecoAssigned, "RecoAssigned[NParticle]/I");
+   OutputTree.Branch("IsReco", &IsReco, "IsReco[NParticle]/I");
+   OutputTree.Branch("IsGen", &IsGen, "IsGen[NParticle]/I");
+   OutputTree.Branch("MinDeltaPhi", &MinDeltaPhi, "MinDeltaPhi[NParticle]/D");
+   OutputTree.Branch("MinDeltaTheta", &MinDeltaTheta, "MinDeltaTheta[NParticle]/D");
 
    // valiables for the pair tree
    int NPair;
@@ -253,6 +258,14 @@ int main(int argc, char *argv[])
    int nAcceptedEvents = 0; 
    ProgressBar Bar(cout, EntryCount);
    Bar.SetStyle(-1); 
+
+   auto getBest = [&](const auto& list, const auto& ref, auto&& method) {
+     return *std::min_element(list.begin(), list.end(),
+                              [&](const auto& a, const auto& b) {
+                                return TMath::Abs(method(a, ref)) < TMath::Abs(method(b, ref));
+                              });
+   };
+
    for(int iE = 0; iE < EntryCount; iE++) 
    {
      // if (iE > 1000) {
@@ -291,6 +304,7 @@ int main(int argc, char *argv[])
          if(MReco.P[i][0] < 0.2) continue;        
          PReco.push_back(MReco.P[i]);
       }
+
 
 
       // now fill the unmatched tree
@@ -402,14 +416,18 @@ int main(int argc, char *argv[])
          RecoTheta[Count] = Reco.GetTheta();
          Distance[Count] = GetAngle(Gen, Reco);
          Metric[Count] = MatchingMetric(Gen, Reco);
-         DeltaPhi[Count] = GetDPhi(Gen,Reco); 
+         DeltaPhi[Count] = GetDPhi(Gen,Reco);
+         DeltaTheta[Count] = GetDTheta(Gen,Reco);
+         MinDeltaPhi[Count] = GetDPhi(Gen, getBest(PReco, Gen, GetDPhi));
+         MinDeltaTheta[Count] = GetDTheta(Gen, getBest(PReco, Gen, GetDTheta));
          DeltaE[Count] = Gen[0] - Reco[0]; 
-         DeltaTheta[Count] = Gen.GetTheta() - Reco.GetTheta(); 
          double Efficiency; 
          if (Reco.GetPT() <  0.2) Efficiency = 1;
          else Efficiency = efficiencyCorrector.efficiency(Reco.GetTheta(), Reco.GetPhi(), Reco.GetPT(), MReco.nChargedParticleHP);
          RecoEfficiency[Count] = 1/Efficiency;
          RecoAssigned[Count] = 1;
+         IsGen[Count] = 1;
+         IsReco[Count] = (iter.second >= 0);
          Count = Count + 1;
       }
 
@@ -446,9 +464,13 @@ int main(int argc, char *argv[])
           Distance[Count] = GetAngle(Gen, Reco);
           Metric[Count] = MatchingMetric(Gen, Reco);
           DeltaPhi[Count] = GetDPhi(Gen, Reco);
+          MinDeltaPhi[Count] = GetDPhi(Reco, getBest(PGen, Reco, GetDPhi));
           DeltaE[Count] = Gen[0] - Reco[0];
-          DeltaTheta[Count] = Gen.GetTheta() - Reco.GetTheta();
+          DeltaTheta[Count] = GetDTheta(Gen, Reco);
+          MinDeltaTheta[Count] = GetDTheta(Reco, getBest(PGen, Reco, GetDTheta));
           RecoAssigned[Count] = 0;
+          IsGen[Count] = 0;
+          IsReco[Count] = 1;
           Count = Count + 1;
           ++NParticle;
         }
