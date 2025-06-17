@@ -32,14 +32,6 @@ double MetricAngle(FourVector A, FourVector B);
 
 // [Warning] A global variable used in *this* cpp script! //
 int MatchingSchemeChoice = 2;
-double MatchingMetricCore( double deltaTheta, double deltaPhi, double deltaE,
-                           double meanE,     // the average btw the GenE and RecoE,
-                                             // this would be used to model the energy-dependency in the resolution assignment
-                           int schemeChoice, // 1: 10% energy as resolution, flat theta and phi resolutions
-                                             // 2: resolutions are cast according to ALEPH tracker performance (energy-dependent description)
-                                             // 3: scale btw the importance of angular-match versus energy-match ( 5x)
-                                             // 4: scale btw the importance of angular-match versus energy-match (15x)
-                           double& chiTheta, double& chiPhi, double& chiE);
 double MatchingMetric(FourVector A, FourVector B);
 int FindBin(double Value, int NBins, double Bins[]); 
 void MatchingPerformance(string& matchedRstRoot, string& rstDirName,
@@ -153,6 +145,7 @@ int main(int argc, char *argv[])
    double GenE[MAX], GenX[MAX], GenY[MAX], GenZ[MAX];
    double RecoE[MAX], RecoX[MAX], RecoY[MAX], RecoZ[MAX];
    double Distance[MAX], DeltaPhi[MAX], Metric[MAX], DeltaE[MAX], DeltaTheta[MAX];
+   double DeltaPt[MAX];
    double RecoEta[MAX], RecoPhi[MAX], RecoTheta[MAX], RecoRapidity[MAX];
    int RecoPWFlag[MAX];
    double GenEta[MAX], GenPhi[MAX], GenTheta[MAX], GenRapidity[MAX];
@@ -175,6 +168,7 @@ int main(int argc, char *argv[])
    OutputTree.Branch("DeltaPhi", &DeltaPhi, "DeltaPhi[NParticle]/D");
    OutputTree.Branch("DeltaTheta", &DeltaTheta, "DeltaTheta[NParticle]/D"); 
    OutputTree.Branch("DeltaE", &DeltaE, "DeltaE[NParticle]/D");
+   OutputTree.Branch("DeltaPt", &DeltaPt, "DeltaPt[NParticle]/D");
    OutputTree.Branch("Metric", &Metric, "Metric[NParticle]/D");
    OutputTree.Branch("RecoEta", &RecoEta, "RecoEta[NParticle]/D");
    OutputTree.Branch("RecoPhi", &RecoPhi, "RecoPhi[NParticle]/D");
@@ -421,6 +415,7 @@ int main(int argc, char *argv[])
          MinDeltaPhi[Count] = GetDPhi(Gen, getBest(PReco, Gen, GetDPhi));
          MinDeltaTheta[Count] = GetDTheta(Gen, getBest(PReco, Gen, GetDTheta));
          DeltaE[Count] = Gen[0] - Reco[0]; 
+         DeltaPt[Count] = Gen.GetPT() - Reco.GetPT();
          double Efficiency; 
          if (Reco.GetPT() <  0.2) Efficiency = 1;
          else Efficiency = efficiencyCorrector.efficiency(Reco.GetTheta(), Reco.GetPhi(), Reco.GetPT(), MReco.nChargedParticleHP);
@@ -466,6 +461,7 @@ int main(int argc, char *argv[])
           DeltaPhi[Count] = GetDPhi(Gen, Reco);
           MinDeltaPhi[Count] = GetDPhi(Reco, getBest(PGen, Reco, GetDPhi));
           DeltaE[Count] = Gen[0] - Reco[0];
+          DeltaPt[Count] = Gen.GetPT() - Reco.GetPT();
           DeltaTheta[Count] = GetDTheta(Gen, Reco);
           MinDeltaTheta[Count] = GetDTheta(Reco, getBest(PGen, Reco, GetDTheta));
           RecoAssigned[Count] = 0;
@@ -602,9 +598,11 @@ double MetricAngle(FourVector A, FourVector B)
 }
 
 // core function to calculate the chisquare(theta,phi,E) based on different assignments of resolutions
+// E means pT now
 double MatchingMetricCore( double deltaTheta, double deltaPhi, double deltaE,
-                           double meanE,     // the average btw the GenE and RecoE,
+                           double meanP,     // the average btw the GenE and RecoE,
                                              // this would be used to model the energy-dependency in the resolution assignment
+                           double meanPt,
                            int schemeChoice, // 1: 10% energy as resolution, flat theta and phi resolutions
                                              // 2: resolutions are cast according to ALEPH tracker performance (energy-dependent description)
                                              // 3: scale btw the importance of angular-match versus energy-match ( 5x)
@@ -614,7 +612,7 @@ double MatchingMetricCore( double deltaTheta, double deltaPhi, double deltaE,
    if (schemeChoice==1)
    {
       double phiRes  = 0.002; // somewhere in the ballpark of 0.002-0.005
-      double Eres    = 0.1*meanE; // use 10% energy resolution //0.85/sqrt(meanE); // take energy resolution based on the mean energy
+      double Eres    = 0.1*meanP; // use 10% energy resolution //0.85/sqrt(meanP); // take energy resolution based on the mean energy
       double AngleRes= (0.01*0.01); // take angular resolution based on the detector resolution
       chiTheta       = deltaTheta/AngleRes;
       chiPhi         = deltaPhi  /phiRes;
@@ -626,24 +624,25 @@ double MatchingMetricCore( double deltaTheta, double deltaPhi, double deltaE,
       double scaleFactorPhi   = 2.3; // sigma(rphi) = 23 µm
       double scaleFactorE     = (schemeChoice==2)? 1: 
                                 (schemeChoice==3)? 5: 15;
-      double sigmaDelta = 25e-6 + 95e-6 / meanE;
+      double sigmaDelta = 25e-6 + 95e-6 / meanP;
       double sigmaTheta = sigmaDelta / 6e-2     // inner vertex detector radius
                         * scaleFactorTheta;     // considering the projection (average) of minimal distance to the r-z
       double sigmaPhi   = sigmaDelta / 6e-2     // inner vertex detector radius 
                         * scaleFactorPhi;       // considering the projection (average) of minimal distance to the r-z
-      double sigmaE = TMath::Sqrt( (6e-4*meanE)*(6e-4*meanE) + 0.005 * 0.005 ) * meanE 
+      double sigmaE = TMath::Sqrt( (6e-4*meanPt)*(6e-4*meanPt) + 0.005 * 0.005 ) * meanPt 
                         * scaleFactorE;
+      // double sigmaE = (6e-4 * meanPt + 5e-3) * meanPt;
       chiTheta       = deltaTheta/sigmaTheta;
       chiPhi         = deltaPhi  /sigmaPhi;
       chiE           = deltaE    /sigmaE;
    }
    else
    {
-      printf("[Error] schemeChoice %d is not supported in MatchingMetricCore. Please choose a number btw 1-4. Exiting...\n", schemeChoice);
-      exit(1);
+     printf("[Error] schemeChoice %d is not supported in MatchingMetricCore. Please choose a number btw 1-4. Exiting...\n", schemeChoice);
+     exit(1);
    }
    
-   double chi2metric = chiTheta*chiTheta + chiPhi*chiPhi + chiE*chiE;
+   double chi2metric = chiTheta*chiTheta + chiPhi*chiPhi + chiE * chiE;
    return (chi2metric);
 }
 
@@ -651,11 +650,12 @@ double MatchingMetric(FourVector A, FourVector B){
    double dTheta = GetDTheta(A,B);
    double dPhi = GetDPhi(A,B); 
    double Ediff = (A[0] - B[0]);
-   double meanE = (A[0] + B[0])/2;  
+   double meanP = (A.GetP() + B.GetP())/2;
+   double meanPt = (A.GetPT() + B.GetPT())/2;
 
    double _chiTheta, _chiPhi, _chiE;
    double chi2metric = MatchingMetricCore( dTheta, dPhi, Ediff,
-                                           meanE, MatchingSchemeChoice,
+                                           meanP, meanPt, MatchingSchemeChoice,
                                            _chiTheta, _chiPhi, _chiE);
    return chi2metric; 
 }
@@ -805,10 +805,12 @@ void MatchingPerformance(string& matchedRstRootName, string& rstDirName,
          }
 
          double meanE = (RecoE[iParticle] + GenE[iParticle])/2;  
+         // TODO: soiled
+         double meanPt = (RecoE[iParticle] + GenE[iParticle])/2;  
          
          double chiTheta, chiPhi, chiE;
          double chi2metric = MatchingMetricCore( deltaTheta, deltaPhi, deltaE,
-                                                 meanE, MatchingSchemeChoice,
+                                                 meanE, meanPt, MatchingSchemeChoice,
                                                  chiTheta, chiPhi, chiE);
 
          trkChiTheta.Fill(chiTheta);
