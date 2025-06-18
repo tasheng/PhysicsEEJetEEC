@@ -57,7 +57,7 @@ can = ROOT.TCanvas("can", "can")
 # Use RDataFrame
 treename = "MatchedTree"
 df2d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched.root")
-# df3d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched_with_deltaE.root")
+df3d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched_with_deltaE.root")
 
 # # Plot the chi^2 distributions
 # h2d_chi2 = df2d.Histo1D(("h2d_chi2", "#chi^{2}", 10**6, 0, 10**6), "Metric")
@@ -200,8 +200,9 @@ def draw_sel(var,
             df_sel = df.Filter(f'Any({cut})').Define(mvar, var)
 
         # make histogram
+        ytitle = "probability" if normalize else "count"
         h = df_sel.Histo1D(
-            (f"h_{label}", f"{name}; {name}; probability", nbins, xmin, xmax),
+            (f"h_{label}", f"{name}; {name}; {ytitle}", nbins, xmin, xmax),
             mvar
         ).GetValue()
 
@@ -240,7 +241,7 @@ def draw_sel(var,
 
     # save
     # outname = outname or f"{var}.png"
-    outname = outname or f"{var}.pdf"
+    outname = outname or f"{var}.svg"
     can.SaveAs(outname)
 
 def draw_comparison(var, name, nbins=400, xmin=-pi, xmax=pi, vmin=-0.5, vmax=0.5,
@@ -292,10 +293,10 @@ def draw_comparison(var, name, nbins=400, xmin=-pi, xmax=pi, vmin=-0.5, vmax=0.5
 
     # Lower pad: ratio
     pad2.cd()
-    h_ratio = h3d.Clone(f"ratio_{name}")
-    h_ratio.Divide(h2d)
+    h_ratio = h2d.Clone(f"ratio_{name}")
+    h_ratio.Divide(h3d)
     h_ratio.SetTitle(f";{name};3D/2D")
-    h_ratio.GetYaxis().SetRangeUser(0.7, 1.3)
+    h_ratio.GetYaxis().SetRangeUser(0.95, 1.05)
     h_ratio.GetXaxis().SetLabelSize(0.12)
     h_ratio.GetYaxis().SetLabelSize(0.12)
     h_ratio.GetYaxis().SetTitleSize(0.14)
@@ -314,11 +315,13 @@ def draw_comparison(var, name, nbins=400, xmin=-pi, xmax=pi, vmin=-0.5, vmax=0.5
 
 
 
-# draw_comparison("DeltaPhi", "#Delta#phi")
-# draw_comparison("DeltaPhi", "#Delta#phi", 100, -0.5, 0.5, -0.5, 0.5)
+draw_comparison("DeltaPhi", "#Delta#phi")
+draw_comparison("DeltaPhi", "#Delta#phi", 100, -0.5, 0.5, -0.5, 0.5)
+dphi_limit = 10e-2
+draw_comparison("DeltaPhi", "#Delta#phi", 51, -dphi_limit, dphi_limit, -dphi_limit, dphi_limit)
 # draw_comparison("DeltaPhi", "#Delta#phi", 100, -0.1, 0.1, -0.1, 0.1)
 # draw_comparison("DeltaPhi", "#Delta#phi", 100, -0.05, 0.05, -0.05, 0.05)
-# draw_comparison("DeltaTheta", "#Delta#theta", 100, -0.2, 0.2, -0.2, 0.2)
+draw_comparison("DeltaTheta", "#Delta#theta", 51, -0.2, 0.2, -0.2, 0.2)
 # draw_comparison("DeltaE", "#DeltaE", 100, -1, 5, -1, 5)
 
 
@@ -412,13 +415,14 @@ ptsel = [(f'Gen pT #in ({ptlow, pthigh})', f'IsGen && IsReco && genpt > {ptlow} 
 
 # plist = [1, 2, 3, 4, 8]
 # plist = [2, 4, 10]
-# plist = [10, 20, 30, 40, 50]
+# plist = [1, 10, 20, 30, 40, 50]
+plist = [0.5, 1, 5, 10, 20, 30]
 # plist = [1, 2, 3, 5, 10, 40]
-plist = [40, 80]
+# plist = [40, 80]
 psel = [(f'Gen p #in ({plow, phigh})', f'IsGen && IsReco && genp > {plow} && genp < {phigh}') for (plow, phigh) in zip(plist, plist[1:])]
 limit = 20e-3
-# draw_sel("DeltaPhi", "#Delta #phi", df2d, psel, 41,  -limit, limit, -limit, limit)
-draw_sel("MinDeltaPhi", "#Delta #phi", df2d, psel, 41,  -limit, limit, -limit, limit)
+draw_sel("DeltaPhi", "#Delta#phi", df2d, psel, 41,  -limit, limit, -limit, limit)
+draw_sel("MinDeltaPhi", "Min. #Delta#phi", df2d, psel, 41,  -limit, limit, -limit, limit)
 
 psel = [('outside', '(IsGen && IsReco && genp > 40 && MinDeltaPhi > 0.002)'),
         ('inside', '(IsGen && IsReco && genp > 40 && abs(MinDeltaPhi) < 0.001)'),
@@ -430,8 +434,9 @@ draw_sel("NReco", "#Delta #phi", df2d, psel, nlimit,  0, nlimit, 0, nlimit, arra
 
 # draw_sel("MinDeltaPhi", "#Delta #phi", df2d, psel, 50,  -limit, limit, -limit, limit)
 # # draw_sel("sigma_pt", "#sigma p_{T}", df2d, ptsel, 100, 0, 0.2, 0, 0.2)
-# draw_sel("chi_phi", "#chi #phi", df2d, psel, 100,  -5, 5, -5, 5, normalize=False)
-# draw_sel("sigma_phi", "#sigma #phi", df2d, psel, 100, 5e-4, 2e-3, 5e-4, 2e-3)
+draw_sel("chi_phi", "#chi #phi", df2d, psel, 101,  -5, 5, -5, 5, normalize=False)
+draw_sel("chi_phi", "#chi #phi", df2d, psel, 101,  -5, 5, -5, 5)
+draw_sel("sigma_phi", "#sigma #phi", df2d, psel, 100, 5e-4, 2e-3, 5e-4, 2e-3, normalize=False)
 
 
 # df2d.Define('genp_high', 'genp > 40').Filter('Sum(genp_high) > 0').Filter('DeltaPhi[genp_high] >0.01').Count()
