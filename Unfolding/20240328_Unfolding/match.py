@@ -1,14 +1,14 @@
-# import ROOT
-# from math import pi
+import ROOT
+from math import pi
 
 # can = ROOT.TCanvas('can', 'can')
 
-# f2d = ROOT.TFile('matchingScheme2/skim_all_Matched.root')
+f2d = ROOT.TFile('matchingScheme2/skim_all_Matched.root')
 # f3d = ROOT.TFile('matchingScheme2/skim_all_Matched_with_deltaE.root')
 
-# treename = 'MatchedTree'
+treename = 'MatchedTree'
 
-# t2d = f2d.Get(treename)
+t2d = f2d.Get(treename)
 # t3d = f3d.Get(treename)
 
 # h2d_chi2 = ROOT.TH1D('h2d_chi2', '#chi^2', 10**6, 0, 10**6)
@@ -50,17 +50,14 @@
 
 # # draw_comparison('Metric', '#chi^{2}', 100, 0, 100, 0, 100)
 
-import ROOT
-from math import pi
-
-ROOT.EnableImplicitMT(40)
+# ROOT.EnableImplicitMT(8)
 ROOT.gStyle.SetOptStat(0)
 can = ROOT.TCanvas("can", "can")
 
 # Use RDataFrame
 treename = "MatchedTree"
 df2d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched.root")
-df3d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched_with_deltaE.root")
+# df3d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched_with_deltaE.root")
 
 # # Plot the chi^2 distributions
 # h2d_chi2 = df2d.Histo1D(("h2d_chi2", "#chi^{2}", 10**6, 0, 10**6), "Metric")
@@ -168,7 +165,8 @@ def draw_sel(var,
              vmax=0.5,
              logy=True,
              normalize=True,
-             outname=None):
+             outname=None,
+             array=True):
     """
     var         : branch name to plot (e.g. "theta")
     name        : axis title (e.g. "θ rec-gen")
@@ -196,7 +194,10 @@ def draw_sel(var,
     histos = []
     for i, (label, cut) in enumerate(selections):
         # define filtered variable array
-        df_sel = df.Define(mvar, f"{var}[{cut}]")
+        if array:
+            df_sel = df.Define(mvar, f"{var}[{cut}]")
+        else:
+            df_sel = df.Filter(f'Any({cut})').Define(mvar, var)
 
         # make histogram
         h = df_sel.Histo1D(
@@ -362,7 +363,7 @@ def extend(df):
     return df
 
 df2d = extend(df2d)
-df3d = extend(df3d)
+# df3d = extend(df3d)
 
 
 # draw_comparison("genp", "p", 100, 0, 100, 0, 100)
@@ -411,17 +412,32 @@ ptsel = [(f'Gen pT #in ({ptlow, pthigh})', f'IsGen && IsReco && genpt > {ptlow} 
 
 # plist = [1, 2, 3, 4, 8]
 # plist = [2, 4, 10]
-plist = [10, 20, 30, 40, 50]
+# plist = [10, 20, 30, 40, 50]
+# plist = [1, 2, 3, 5, 10, 40]
+plist = [40, 80]
 psel = [(f'Gen p #in ({plow, phigh})', f'IsGen && IsReco && genp > {plow} && genp < {phigh}') for (plow, phigh) in zip(plist, plist[1:])]
 limit = 20e-3
-draw_sel("DeltaPhi", "#Delta #phi", df2d, psel, 101,  -limit, limit, -limit, limit)
+# draw_sel("DeltaPhi", "#Delta #phi", df2d, psel, 41,  -limit, limit, -limit, limit)
+draw_sel("MinDeltaPhi", "#Delta #phi", df2d, psel, 41,  -limit, limit, -limit, limit)
 
-draw_sel("MinDeltaPhi", "#Delta #phi", df2d, psel, 50,  -limit, limit, -limit, limit)
-# draw_sel("sigma_pt", "#sigma p_{T}", df2d, ptsel, 100, 0, 0.2, 0, 0.2)
-draw_sel("chi_phi", "#chi #phi", df2d, psel, 100,  -5, 5, -5, 5, normalize=False)
-draw_sel("sigma_phi", "#sigma #phi", df2d, psel, 100, 5e-4, 1e-3, 5e-4, 1e-3)
+psel = [('outside', '(IsGen && IsReco && genp > 40 && MinDeltaPhi > 0.002)'),
+        ('inside', '(IsGen && IsReco && genp > 40 && abs(MinDeltaPhi) < 0.001)'),
+        ]
+nlimit = 60
+draw_sel("NReco", "# of reco particles", df2d, psel, nlimit,  0, nlimit, 0, nlimit, array=False)
+draw_sel("NReco", "#Delta #phi", df2d, psel, nlimit,  0, nlimit, 0, nlimit, array=False)
 
 
+# draw_sel("MinDeltaPhi", "#Delta #phi", df2d, psel, 50,  -limit, limit, -limit, limit)
+# # draw_sel("sigma_pt", "#sigma p_{T}", df2d, ptsel, 100, 0, 0.2, 0, 0.2)
+# draw_sel("chi_phi", "#chi #phi", df2d, psel, 100,  -5, 5, -5, 5, normalize=False)
+# draw_sel("sigma_phi", "#sigma #phi", df2d, psel, 100, 5e-4, 2e-3, 5e-4, 2e-3)
+
+
+# df2d.Define('genp_high', 'genp > 40').Filter('Sum(genp_high) > 0').Filter('DeltaPhi[genp_high] >0.01').Count()
+dfsel = df2d.Define('genp_high', 'genp > 40')
+dfsel.Filter('Any(genp_high && IsGen && IsReco) & Any(DeltaPhi[genp_high && IsGen && IsReco] > 0.01)').Display(['EventID']).Print()
+# h2d = dfsel.Histo2D(('f2d', 'f2d;dphi;chiphi', 100, -1e-2, 1e-2, 100, -5, 5), 'dphi_high', 'chiphi_high').GetValue()
 
 # # 2D plot
 # dfsel = df2d.Define('dphi_high', f'DeltaPhi[{psel[-1][1]}]')
@@ -433,4 +449,5 @@ draw_sel("sigma_phi", "#sigma #phi", df2d, psel, 100, 5e-4, 1e-3, 5e-4, 1e-3)
 # h2d.Draw('col'); can.Update()
 # can.SaveAs('precision.png')
 
-df2d.
+
+# df2d.Filter('(Sum(chi_phi_high) > 0)').Display(['genpt', 'chi_phi_high', 'chi_phi', 'GenX', "RecoX", "RecoEta", "GenEta"], 5, 100).Print()
