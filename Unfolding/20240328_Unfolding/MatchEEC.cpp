@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
    double GenEta[MAX], GenPhi[MAX], GenTheta[MAX], GenRapidity[MAX];
    double RecoEfficiency[MAX];
    int RecoAssigned[MAX], IsReco[MAX], IsGen[MAX];
-   double MinDeltaPhi[MAX], MinDeltaTheta[MAX];
+   double MinDeltaPhi[MAX], MinDeltaTheta[MAX], MinMetric[MAX];
    OutputTree.Branch("EventID", &eventID, "EventID/I");
    OutputTree.Branch("NParticle", &NParticle, "NParticle/I"); 
    OutputTree.Branch("NReco", &NReco, "NReco/I"); 
@@ -185,6 +185,7 @@ int main(int argc, char *argv[])
    OutputTree.Branch("IsGen", &IsGen, "IsGen[NParticle]/I");
    OutputTree.Branch("MinDeltaPhi", &MinDeltaPhi, "MinDeltaPhi[NParticle]/D");
    OutputTree.Branch("MinDeltaTheta", &MinDeltaTheta, "MinDeltaTheta[NParticle]/D");
+   OutputTree.Branch("MinMetric", &MinMetric, "MinMetric[NParticle]/D");
 
    // valiables for the pair tree
    int NPair;
@@ -414,6 +415,7 @@ int main(int argc, char *argv[])
          DeltaTheta[Count] = GetDTheta(Gen,Reco);
          MinDeltaPhi[Count] = GetDPhi(Gen, getBest(PReco, Gen, GetDPhi));
          MinDeltaTheta[Count] = GetDTheta(Gen, getBest(PReco, Gen, GetDTheta));
+         MinMetric[Count] = MatchingMetric(Gen, getBest(PReco, Gen, MatchingMetric));
          DeltaE[Count] = Gen[0] - Reco[0]; 
          DeltaPt[Count] = Gen.GetPT() - Reco.GetPT();
          double Efficiency; 
@@ -464,6 +466,7 @@ int main(int argc, char *argv[])
           DeltaPt[Count] = Gen.GetPT() - Reco.GetPT();
           DeltaTheta[Count] = GetDTheta(Gen, Reco);
           MinDeltaTheta[Count] = GetDTheta(Reco, getBest(PGen, Reco, GetDTheta));
+          MinMetric[Count] = MatchingMetric(Reco, getBest(PGen, Reco, MatchingMetric));
           RecoAssigned[Count] = 0;
           IsGen[Count] = 0;
           IsReco[Count] = 1;
