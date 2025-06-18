@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
 
    alephTrkEfficiency efficiencyCorrector;
    // variables for the matched tree
-   int NParticle, eventID, NReco, NGen;
+   int NParticle, eventID, runID, NReco, NGen;
    double GenE[MAX], GenX[MAX], GenY[MAX], GenZ[MAX];
    double RecoE[MAX], RecoX[MAX], RecoY[MAX], RecoZ[MAX];
    double Distance[MAX], DeltaPhi[MAX], Metric[MAX], DeltaE[MAX], DeltaTheta[MAX];
@@ -152,6 +152,7 @@ int main(int argc, char *argv[])
    double RecoEfficiency[MAX];
    int RecoAssigned[MAX], IsReco[MAX], IsGen[MAX];
    double MinDeltaPhi[MAX], MinDeltaTheta[MAX], MinMetric[MAX];
+   OutputTree.Branch("RunID", &runID, "RunID/I");
    OutputTree.Branch("EventID", &eventID, "EventID/I");
    OutputTree.Branch("NParticle", &NParticle, "NParticle/I"); 
    OutputTree.Branch("NReco", &NReco, "NReco/I"); 
@@ -385,6 +386,7 @@ int main(int argc, char *argv[])
       NReco = PReco.size();
       NGen = PGen.size();
       eventID = MGen.EventNo;
+      runID = MGen.RunNo;
       for(auto iter : Matching)
       {
          FourVector Gen = iter.first >= 0 ? PGen[iter.first] : FourVector(-1, 0, 0, 0);
