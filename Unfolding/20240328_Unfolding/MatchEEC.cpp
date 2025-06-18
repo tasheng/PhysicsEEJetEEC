@@ -657,9 +657,10 @@ double MatchingMetric(FourVector A, FourVector B){
    double Ediff = (A[0] - B[0]);
    double meanP = (A.GetP() + B.GetP())/2;
    double meanPt = (A.GetPT() + B.GetPT())/2;
+   double dPt = A.GetPT() - B.GetPT();
 
    double _chiTheta, _chiPhi, _chiE;
-   double chi2metric = MatchingMetricCore( dTheta, dPhi, Ediff,
+   double chi2metric = MatchingMetricCore( dTheta, dPhi, dPt,
                                            meanP, meanPt, MatchingSchemeChoice,
                                            _chiTheta, _chiPhi, _chiE);
    return chi2metric; 
