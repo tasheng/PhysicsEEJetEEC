@@ -602,59 +602,66 @@ double MetricAngle(FourVector A, FourVector B)
    return Angle; 
 }
 
-// core function to calculate the chisquare(theta,phi,E) based on different assignments of resolutions
-// E means pT now
-double MatchingMetricCore( double deltaTheta, double deltaPhi, double deltaE,
-                           double meanP,     // the average btw the GenE and RecoE,
+// core function to calculate the chisquare(theta,phi,pT) based on different assignments of resolutions
+double MatchingMetricCore( double deltaTheta, double deltaPhi, double deltaPt,
+                           double meanP,     // the average btw the GenPt and RecoPt,
                                              // this would be used to model the energy-dependency in the resolution assignment
                            double meanPt,
                            int schemeChoice, // 1: 10% energy as resolution, flat theta and phi resolutions
-                                             // 2: resolutions are cast according to ALEPH tracker performance (energy-dependent description)
+                                             // 2: resolutions are cast according to ALPtPH tracker performance (energy-dependent description)
                                              // 3: scale btw the importance of angular-match versus energy-match ( 5x)
                                              // 4: scale btw the importance of angular-match versus energy-match (15x)
-                           double& chiTheta, double& chiPhi, double& chiE)
+                           double& chiTheta, double& chiPhi, double& chiPt)
 {
    if (schemeChoice==1)
    {
       double phiRes  = 0.002; // somewhere in the ballpark of 0.002-0.005
-      double Eres    = 0.1*meanP; // use 10% energy resolution //0.85/sqrt(meanP); // take energy resolution based on the mean energy
+      double Ptres    = 0.1*meanP; // use 10% energy resolution //0.85/sqrt(meanP); // take energy resolution based on the mean energy
       double AngleRes= (0.01*0.01); // take angular resolution based on the detector resolution
       chiTheta       = deltaTheta/AngleRes;
       chiPhi         = deltaPhi  /phiRes;
-      chiE           = deltaE    /Eres;
+      chiPt           = deltaPt    /Ptres;
    }
    else if (schemeChoice==2 || schemeChoice==3 || schemeChoice==4)
    {
       double scaleFactorTheta = 2.8; // sigma(rz)   = 28 µm
       double scaleFactorPhi   = 2.3; // sigma(rphi) = 23 µm
-      double scaleFactorE     = (schemeChoice==2)? 1: 
+      double scaleFactorPt     = (schemeChoice==2)? 1: 
                                 (schemeChoice==3)? 5: 15;
       double sigmaDelta = 25e-6 + 95e-6 / meanP;
       double sigmaTheta = sigmaDelta / 6e-2     // inner vertex detector radius
                         * scaleFactorTheta;     // considering the projection (average) of minimal distance to the r-z
       double sigmaPhi   = sigmaDelta / 6e-2     // inner vertex detector radius 
                         * scaleFactorPhi;       // considering the projection (average) of minimal distance to the r-z
-      double sigmaE = TMath::Sqrt( (6e-4*meanPt)*(6e-4*meanPt) + 0.005 * 0.005 ) * meanPt 
-                        * scaleFactorE;
-      // double sigmaE = (6e-4 * meanPt + 5e-3) * meanPt;
-      chiTheta       = deltaTheta/sigmaTheta;
-      chiPhi         = deltaPhi  /sigmaPhi;
-      chiE           = deltaE    /sigmaE;
+      double sigmaPt = TMath::Sqrt( (6e-4*meanPt)*(6e-4*meanPt) + 0.005 * 0.005 ) * meanPt
+                        * scaleFactorPt;
+      // double sigmaPt = (6e-4 * meanPt + 5e-3) * meanPt;
+
+      // Put a threshold of 1e-3 for all the uncertainties
+      // This works because of small angle approximation sin(theta) = theta
+      double epsilon = 1e-3;
+      sigmaTheta = (sigmaTheta < epsilon)? epsilon : sigmaTheta;
+      sigmaPhi = (sigmaPhi < epsilon)? epsilon : sigmaPhi;
+      sigmaPt = (sigmaPt < epsilon)? epsilon : sigmaPt;
+
+      chiTheta       = deltaTheta / sigmaTheta;
+      chiPhi         = deltaPhi / sigmaPhi;
+      chiPt          = deltaPt / sigmaPt;
    }
    else
-   {
-     printf("[Error] schemeChoice %d is not supported in MatchingMetricCore. Please choose a number btw 1-4. Exiting...\n", schemeChoice);
-     exit(1);
-   }
+     {
+       printf("[Error] schemeChoice %d is not supported in MatchingMetricCore. Please choose a number btw 1-4. Exiting...\n", schemeChoice);
+       exit(1);
+     }
    
-   double chi2metric = chiTheta*chiTheta + chiPhi*chiPhi + chiE * chiE;
+   double chi2metric = chiTheta*chiTheta + chiPhi*chiPhi + chiPt * chiPt;
    return (chi2metric);
 }
 
 double MatchingMetric(FourVector A, FourVector B){
-   double dTheta = GetDTheta(A,B);
-   double dPhi = GetDPhi(A,B); 
-   double Ediff = (A[0] - B[0]);
+  double dTheta = GetDTheta(A,B);
+  double dPhi = GetDPhi(A,B); 
+  double Ediff = (A[0] - B[0]);
    double meanP = (A.GetP() + B.GetP())/2;
    double meanPt = (A.GetPT() + B.GetPT())/2;
    double dPt = A.GetPT() - B.GetPT();
