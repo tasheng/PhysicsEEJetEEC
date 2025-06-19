@@ -1,9 +1,8 @@
 import ROOT
 from math import pi
 
-# can = ROOT.TCanvas('can', 'can')
-
-f2d = ROOT.TFile('matchingScheme2/skim_all_Matched.root')
+# f2d = ROOT.TFile('matchingScheme2/skim_all_Matched.root')
+f2d = ROOT.TFile('matchingScheme2/skim_all_Matched_no_cutoff.root')
 # f3d = ROOT.TFile('matchingScheme2/skim_all_Matched_with_deltaE.root')
 
 treename = 'MatchedTree'
@@ -11,98 +10,21 @@ treename = 'MatchedTree'
 t2d = f2d.Get(treename)
 # t3d = f3d.Get(treename)
 
-# h2d_chi2 = ROOT.TH1D('h2d_chi2', '#chi^2', 10**6, 0, 10**6)
-# h3d_chi2 = ROOT.TH1D('h3d_chi2', '#chi^2', 10**6, 0, 10**6)
-# t2d.Draw('Metric >> h2d_chi2')
-# t3d.Draw('Metric >> h3d_chi2')
-
-# can.SetLogx()
-# can.SetLogy()
-
-# h2d_chi2.Draw()
-# h3d_chi2.Draw('same')
-
-
-# def draw_comparison(var, name, nbins=400, xmin=-pi, xmax=-pi, vmin=-0.5, vmax=0.5):
-#     h2d = ROOT.TH1D(f'h2d_{name}', '#chi^{2}(#theta,#phi)', nbins, xmin, xmax)
-#     h3d = ROOT.TH1D(f'h3d_{name}', '#chi^{2}(#theta,#phi,E)', nbins, xmin, xmax)
-#     h2d.SetLineColor(ROOT.kBlack)
-#     h3d.SetLineColor(ROOT.kRed)
-#     h2d.SetLineWidth(1)
-#     h3d.SetLineWidth(1)
-#     can.SetLogx(0)
-#     can.SetLogy(1)
-#     t2d.Draw(f'{var} >> h2d_{name}', 'IsGen && IsReco')
-#     t3d.Draw(f'{var} >> h3d_{name}', 'IsGen && IsReco')
-#     h2d.GetXaxis().SetRangeUser(vmin, vmax)
-#     h3d.GetXaxis().SetRangeUser(vmin, vmax)
-#     h2d.Scale(1/h2d.Integral())
-#     h3d.Scale(1/h3d.Integral())
-#     h3d.Draw('same')
-#     h2d.Draw()
-#     h3d.Draw('same')
-#     can.BuildLegend()
-#     h2d.SetTitle(f';{name};probability')
-#     can.SaveAs(f'{var}.png')
-
-# draw_comparison('DeltaPhi', '#Delta#phi', 50, -0.2, 0.2, -0.2, 0.2)
-# draw_comparison('DeltaTheta', '#Delta#theta', 50, -0.2, 0.2, -0.2, 0.2)
-
-# # draw_comparison('Metric', '#chi^{2}', 100, 0, 100, 0, 100)
-
-# ROOT.EnableImplicitMT(8)
+ROOT.EnableImplicitMT(20)
 ROOT.gStyle.SetOptStat(0)
-can = ROOT.TCanvas("can", "can")
+can = ROOT.TCanvas("can", "can", 1200, 1000)
 
 # Use RDataFrame
 treename = "MatchedTree"
-df2d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched.root")
-df3d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched_with_deltaE.root")
+# df2d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched.root")
+# df3d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched_with_deltaE.root")
+# df2d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched.root")
+df2d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched_no_cutoff.root")
+df3d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched_no_cutoff.root")
 
-# # Plot the chi^2 distributions
+# # # Plot the chi^2 distributions
 # h2d_chi2 = df2d.Histo1D(("h2d_chi2", "#chi^{2}", 10**6, 0, 10**6), "Metric")
 # h3d_chi2 = df3d.Histo1D(("h3d_chi2", "#chi^{2}", 10**6, 0, 10**6), "Metric")
-
-# can.SetLogx()
-# can.SetLogy()
-# h2d_chi2.Draw()
-# h3d_chi2.Draw("same")
-
-# def rdefine(df, column_name, expression):
-#     """
-#     Define a new column in the RDataFrame if it doesn't exist.
-#     If it already exists, redefine it.
-#     """
-#     if column_name in df.GetColumnNames():
-#         return df
-#         # Drop the column if it exists, then define again
-#         # df = df.Redefine(column_name, expression)
-#     else:
-#         df = df.Define(column_name, expression)
-#     return df
-
-
-# def rdefine(self, column_name, expression):
-#     """
-#     Define a new column in the RDataFrame if it doesn't exist.
-#     If it already exists, redefine it.
-#     """
-#     if column_name in self.GetColumnNames():
-#         # return self.Redefine(column_name, expression)
-#         return self
-#     else:
-#         return self.Define(column_name, expression)
-
-# # Attach the method to ROOT.RDF.RInterface
-# ROOT.RDF.RInterface.__rdefine__ = rdefine
-# ROOT.RDF.RInterface.rdefine = rdefine
-# ROOT.RDataFrame.rdefine = rdefine
-
-
-
-# rdf_iface = type(ROOT.RDataFrame("dummy", ROOT.TTree()))
-# rdf_iface.rdefine = rdefine
-
 
 def patch_rdefine(iface=None):
     if not iface:
@@ -120,39 +42,6 @@ def patch_rdefine(iface=None):
 
 patch_rdefine()
 
-
-# def draw_comparison(var, name, nbins=400, xmin=-pi, xmax=pi, vmin=-0.5, vmax=0.5):
-#     can.SetLogx(0)
-#     can.SetLogy(1)
-#     mvar = f'matched_{var}'
-
-#     df2d_sel = df2d.Define(mvar, f"{var}[IsGen && IsReco]")
-#     df3d_sel = df3d.Define(mvar, f"{var}[IsGen && IsReco]")
-
-#     h2d = df2d_sel.Histo1D((f"h2d_{name}", "#chi^{2}(#theta,#phi)", nbins, xmin, xmax), mvar)
-#     h3d = df3d_sel.Histo1D((f"h3d_{name}", "#chi^{2}(#theta,#phi,E)", nbins, xmin, xmax), mvar)
-
-#     h2d.SetLineColor(ROOT.kBlack)
-#     h3d.SetLineColor(ROOT.kRed)
-#     h2d.SetLineWidth(1)
-#     h3d.SetLineWidth(1)
-
-#     # Normalize histograms
-#     h2d.Scale(1.0 / h2d.Integral())
-#     h3d.Scale(1.0 / h3d.Integral())
-
-#     h2d.GetXaxis().SetRangeUser(vmin, vmax)
-#     h2d.Draw()
-#     h3d.Draw("same")
-#     can.BuildLegend()
-#     h2d.SetTitle(f";{name};probability")
-#     can.SaveAs(f"{var}.png")
-
-# import ROOT
-# from math import pi
-
-import ROOT
-from math import pi
 
 def draw_sel(var,
              name,
@@ -296,7 +185,7 @@ def draw_comparison(var, name, nbins=400, xmin=-pi, xmax=pi, vmin=-0.5, vmax=0.5
     h_ratio = h2d.Clone(f"ratio_{name}")
     h_ratio.Divide(h3d)
     h_ratio.SetTitle(f";{name};3D/2D")
-    h_ratio.GetYaxis().SetRangeUser(0.95, 1.05)
+    h_ratio.GetYaxis().SetRangeUser(0.95, 1.02)
     h_ratio.GetXaxis().SetLabelSize(0.12)
     h_ratio.GetYaxis().SetLabelSize(0.12)
     h_ratio.GetYaxis().SetTitleSize(0.14)
@@ -315,19 +204,18 @@ def draw_comparison(var, name, nbins=400, xmin=-pi, xmax=pi, vmin=-0.5, vmax=0.5
 
 
 
-draw_comparison("DeltaPhi", "#Delta#phi")
-draw_comparison("DeltaPhi", "#Delta#phi", 100, -0.5, 0.5, -0.5, 0.5)
-dphi_limit = 10e-2
-draw_comparison("DeltaPhi", "#Delta#phi", 51, -dphi_limit, dphi_limit, -dphi_limit, dphi_limit)
-# draw_comparison("DeltaPhi", "#Delta#phi", 100, -0.1, 0.1, -0.1, 0.1)
-# draw_comparison("DeltaPhi", "#Delta#phi", 100, -0.05, 0.05, -0.05, 0.05)
-draw_comparison("DeltaTheta", "#Delta#theta", 51, -0.2, 0.2, -0.2, 0.2)
+# draw_comparison("DeltaPhi", "#Delta#phi")
+dphi_limit = 5e-2
+draw_comparison("DeltaPhi", "#Delta#phi", 61, -dphi_limit, dphi_limit, -dphi_limit, dphi_limit)
+draw_comparison("DeltaTheta", "#Delta#theta", 41, -dphi_limit, dphi_limit, -dphi_limit, dphi_limit)
 # draw_comparison("DeltaE", "#DeltaE", 100, -1, 5, -1, 5)
+draw_comparison("DeltaPhi", "#Delta#phi", 101, -dphi_limit, dphi_limit, -dphi_limit, dphi_limit)
+draw_comparison("DeltaTheta", "#Delta#theta", 101, -dphi_limit, dphi_limit, -dphi_limit, dphi_limit)
 
 
 def extend(df):
-    scaleFactorTheta = 0.5 * 2.8  # sigma(rz)   = 28 µm
-    scaleFactorPhi   = 0.5 * 2.3  # sigma(rphi) = 23 µm
+    scaleFactorTheta = 2.8  # sigma(rz)   = 28 µm
+    scaleFactorPhi   = 2.3  # sigma(rphi) = 23 µm
 
     # sigmaDelta = 25e-6 + 95e-6 / meanP
     # sigmaTheta = sigmaDelta / 0.06 * scaleFactorTheta
@@ -362,68 +250,47 @@ def extend(df):
     df = df.\
         Define('sigma_pt', 'sqrt(pow((6e-4 * genpt), 2) + pow(5e-3, 2)) * genpt').\
         Define('pt_over_40', 'genpt > 40').\
-        Define('chi_phi_high', 'chi_phi[pt_over_40]')
+        Define('sigma_pt_reci', 'sqrt(pow((6e-4 * genpt), 2) + pow(5e-3, 2)) * genpt').\
+
+    df = df.\
+        Define('recopt_reci', '1 / sqrt(RecoX * RecoX + RecoY * RecoY)').\
+        Define('genpt_reci', '1/genpt').\
+        Define('DeltaPt_Reci', 'recopt_reci - genpt_reci')
     return df
 
 df2d = extend(df2d)
-# df3d = extend(df3d)
+df3d = extend(df3d)
+
+draw_comparison("Metric", "#chi", 101, 0, 10000, 0, 10000, sel='genp > 30')
 
 
-# draw_comparison("genp", "p", 100, 0, 100, 0, 100)
-# draw_comparison("sigma_theta", "#sigma#theta", 100, 0, 1e-2, 0, 1e-2)
-
-# draw_comparison("sigma_phi", "#sigma#phi", 100, 0, 1e-2, 0, 1e-2)
-# draw_comparison("sigma_pt", "#sigma p_{T}", 100, 0, 1e-2, 0, 1e-2)
-# draw_comparison("sigma_pt", "#sigma p_{T}", 100, 0, 1e-1, 0, 1e-1, 'genpt > 10')
-# draw_comparison("sigma_pt", "#sigma p_{T}", 100, 0, 10, 0, 10, 'genpt > 50')
-
-# draw_comparison("chi2_phi", "#chi^{2}#phi", 100, -5e-1, 5e-1, -5e-1, 5e-1)
-
-# draw_comparison("chi2_phi", "#chi^{2}#phi", 100, -3, 3, -3, 3)
-# draw_comparison("chi2_phi", "#chi^{2}#phi", 100, -1e2, 1e2, -1e2, 1e2)
-# draw_comparison("chi2_phi", "#chi^{2}#phi", 100, -3, 3, -3, 3, sel="genp < 5")
-# draw_comparison("chi2_theta", "#chi^{2}#theta", 100, -5, 5, -5, 5)
-# draw_comparison("chi2_pt", "#chi^{2}p_{T}", 100, -3, 3, -3, 3, sel="genp > 20")
-# draw_comparison("DeltaPhi", "#Delta#phi", 100, -1e-2, 1e-2, -1e-2, 1e-2, sel="genp > 60")
 
 
-# draw_comparison("chi_pt_high", "#chi p_{T}", 100, -1e-0, 1e-0, -1e-0, 1e-0)
-
-# draw_comparison("genpt", "gen pt", 50, 0, 20, 0, 20)
-# draw_comparison("chi_pt", "#chi p_{T}", 100, -3, 3, -3, 3, sel="genpt > 20")
-# draw_comparison("chi_pt", "#chi p_{T}", 100, -3, 3, -3, 3, sel="")
-# draw_comparison("genp", "gen p", 50, 0, 2, 0, 2)
-# draw_comparison("GenX", "gen X", 50, 0, 2, 0, 2)
-# draw_comparison("GenY", "gen y", 50, 0, 2, 0, 2)
-# draw_comparison("GenZ", "gen z", 50, 0, 2, 0, 2)
-
-# df2d.Filter('(Sum(chi_phi_high) > 0)').Display(['genpt', 'chi_phi_high', 'chi_phi', 'GenX', "RecoX", "RecoEta", "GenEta"], 5, 100).Print()
-
-# draw_comparison("chi_phi", "#chi #phi", 100, -3, 3, -3, 3)
-# draw_comparison("chi_phi", "#chi #phi", 100, -3, 3, -3, 3, 'genp > 1 && genp < 2')
-# draw_comparison("chi_phi", "#chi #phi", 100, -3, 3, -3, 3, "pt_over_40")
-# draw_comparison("chi_phi", "#chi #phi", 100, -10, 10, -10, 10, "pt_over_40")
-# draw_comparison("chi_phi", "#chi #phi", 100, -10, 10, -10, 10, "pt_over_40")
-
-# draw_comparison("DeltaPhi", "#Delta#phi", 100, -0.5, 0.5, -0.5, 0.5)
-# draw_comparison("DeltaPhi", "#Delta#phi", 100, -0.05, 0.05, -0.05, 0.05)
-
-ptlist = [0.2, 2, 5, 10, 50, 90]
-# ptlist = [2, 5, 10, 50, 90]
-ptlist = [0.2, 2, 5, 10, 50]
-ptsel = [(f'Gen pT #in ({ptlow, pthigh})', f'IsGen && IsReco && genpt > {ptlow} && genpt < {pthigh}') for (ptlow, pthigh) in zip(ptlist, ptlist[1:])]
-
-# plist = [1, 2, 3, 4, 8]
-# plist = [2, 4, 10]
 # plist = [1, 10, 20, 30, 40, 50]
-plist = [0.5, 1, 5, 10, 20, 30]
+plist = [0.5, 1, 5, 10, 20, 30, 100]
 # plist = [1, 2, 3, 5, 10, 40]
 # plist = [40, 80]
 psel = [(f'Gen p #in ({plow, phigh})', f'IsGen && IsReco && genp > {plow} && genp < {phigh}') for (plow, phigh) in zip(plist, plist[1:])]
 limit = 20e-3
-draw_sel("DeltaPhi", "#Delta#phi", df2d, psel, 41,  -limit, limit, -limit, limit)
-draw_sel("MinDeltaPhi", "Min. #Delta#phi", df2d, psel, 41,  -limit, limit, -limit, limit)
+# draw_sel("DeltaPhi", "#Delta#phi", df2d, psel, 201,  -limit, limit, -limit, limit)
+# draw_sel("MinDeltaPhi", "Min. #Delta#phi", df2d, psel, 41,  -limit, limit, -limit, limit)
+# limit = 5e-3
+# draw_sel("DeltaTheta", "#Delta#theta", df2d, psel, 201,  -limit, limit, -limit, limit)
 
+# ptlist = [0.2, 2, 5, 10, 20, 30]
+ptlist = [10, 20, 30]
+ptsel = [(f'Gen pT #in {ptlow, pthigh}', f'IsGen && IsReco && genpt > {ptlow} && genpt < {pthigh}') for (ptlow, pthigh) in zip(ptlist, ptlist[1:])]
+# ptsel = [(f'Gen 1/pT #in 1/{pthigh}, 1/{ptlow}', f'IsGen && IsReco && genpt_reci > {1/pthigh} && genpt_reci < {1/ptlow}') for (ptlow, pthigh) in zip(ptlist, ptlist[1:])]
+ptlimit = 1e1
+draw_sel("DeltaPt", "#Deltap_{T}", df2d, ptsel[::-1], 101,  -ptlimit, ptlimit, -ptlimit, ptlimit)
+limit = 1e-2
+draw_sel("DeltaPt_Reci", "#Delta#frac{1}{p_{T}}", df2d, ptsel, 101,  -limit, limit, -limit, limit)
+
+# draw_sel("sigma_phi", "#sigma #phi", df2d, psel, 100, 5e-4, 2e-3, 5e-4, 2e-3, normalize=False)
+# draw_sel("sigma_theta", "#sigma #theta", df2d, psel, 100, 5e-4, 2e-3, 5e-4, 2e-3, normalize=False)
+
+
+####################
 psel = [('outside', '(IsGen && IsReco && genp > 40 && MinDeltaPhi > 0.002)'),
         ('inside', '(IsGen && IsReco && genp > 40 && abs(MinDeltaPhi) < 0.001)'),
         ]
@@ -433,10 +300,10 @@ draw_sel("NReco", "#Delta #phi", df2d, psel, nlimit,  0, nlimit, 0, nlimit, arra
 
 
 # draw_sel("MinDeltaPhi", "#Delta #phi", df2d, psel, 50,  -limit, limit, -limit, limit)
-# # draw_sel("sigma_pt", "#sigma p_{T}", df2d, ptsel, 100, 0, 0.2, 0, 0.2)
+draw_sel("sigma_pt", "#sigma p_{T}", df2d, ptsel, 100, 0, 0.2, 0, 0.2)
 draw_sel("chi_phi", "#chi #phi", df2d, psel, 101,  -5, 5, -5, 5, normalize=False)
 draw_sel("chi_phi", "#chi #phi", df2d, psel, 101,  -5, 5, -5, 5)
-draw_sel("sigma_phi", "#sigma #phi", df2d, psel, 100, 5e-4, 2e-3, 5e-4, 2e-3, normalize=False)
+# draw_sel("sigma_phi", "#sigma #phi", df2d, psel, 100, 5e-4, 2e-3, 5e-4, 2e-3, normalize=False)
 
 
 # df2d.Define('genp_high', 'genp > 40').Filter('Sum(genp_high) > 0').Filter('DeltaPhi[genp_high] >0.01').Count()
