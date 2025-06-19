@@ -1,8 +1,8 @@
 import ROOT
 from math import pi
 
-# f2d = ROOT.TFile('matchingScheme2/skim_all_Matched.root')
-f2d = ROOT.TFile('matchingScheme2/skim_all_Matched_no_cutoff.root')
+f2d = ROOT.TFile('matchingScheme2/skim_all_Matched.root')
+# f2d = ROOT.TFile('matchingScheme2/skim_all_Matched_no_cutoff.root')
 # f3d = ROOT.TFile('matchingScheme2/skim_all_Matched_with_deltaE.root')
 
 treename = 'MatchedTree'
@@ -18,8 +18,8 @@ can = ROOT.TCanvas("can", "can", 1200, 1000)
 treename = "MatchedTree"
 # df2d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched.root")
 # df3d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched_with_deltaE.root")
-# df2d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched.root")
-df2d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched_no_cutoff.root")
+df2d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched.root")
+# df2d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched_no_cutoff.root")
 df3d = ROOT.RDataFrame(treename, "matchingScheme2/skim_all_Matched_no_cutoff.root")
 
 # # # Plot the chi^2 distributions
@@ -205,8 +205,8 @@ def draw_comparison(var, name, nbins=400, xmin=-pi, xmax=pi, vmin=-0.5, vmax=0.5
 
 
 # draw_comparison("DeltaPhi", "#Delta#phi")
-# dphi_limit = 5e-2
-# draw_comparison("DeltaPhi", "#Delta#phi", 61, -dphi_limit, dphi_limit, -dphi_limit, dphi_limit)
+dphi_limit = 5e-2
+draw_comparison("DeltaPhi", "#Delta#phi", 61, -dphi_limit, dphi_limit, -dphi_limit, dphi_limit)
 # draw_comparison("DeltaTheta", "#Delta#theta", 41, -dphi_limit, dphi_limit, -dphi_limit, dphi_limit)
 # draw_comparison("DeltaE", "#DeltaE", 100, -1, 5, -1, 5)
 # draw_comparison("DeltaPhi", "#Delta#phi", 101, -dphi_limit, dphi_limit, -dphi_limit, dphi_limit)
@@ -260,16 +260,23 @@ draw_comparison("Metric", "#chi", 101, 0, 10000, 0, 10000, sel='genp > 30')
 # plist = [1, 10, 20, 30, 40, 50]
 # plist = [0.5, 1, 5, 10, 20, 30, 100]
 plist = [.2, .3, .5, .7, 1.0]
+plist_low = [.2, 1., 10, 30]
+plist_high = [.5, 1.5, 15, 40]
 # plist = [.5, .7, 1.0]
-# plist = [40, 50, 60, 70]
-# plist = [1, 2, 3, 5, 10, 40]
+plist = [40, 50, 60, 70]
+plist = [1, 2, 3, 5, 10, 40]
 # plist = [40, 80]
-psel = [(f'Gen p #in ({plow, phigh})', f'IsGen && IsReco && genp > {plow} && genp < {phigh}') for (plow, phigh) in zip(plist, plist[1:])]
+# psel = [(f'Gen p #in ({plow, phigh})', f'IsGen && IsReco && genp > {plow} && genp < {phigh}') for (plow, phigh) in zip(plist, plist[1:])]
+psel = [(f'Gen p #in ({plow, phigh})', f'IsGen && IsReco && genp > {plow} && genp < {phigh}') for (plow, phigh) in zip(plist_low, plist_high)]
 limit = 20e-3
-draw_sel("DeltaPhi", "#Delta#phi", df2d, psel, 41,  -limit, limit, -limit, limit)
-# draw_sel("MinDeltaPhi", "Min. #Delta#phi", df2d, psel, 41,  -limit, limit, -limit, limit)
+draw_sel("RecoPhi", "#Delta#phi", df2d, psel, 81,  -limit, limit, -limit, limit)
+draw_sel("DeltaPhi", "#Delta#phi", df2d, psel, 161,  -limit, limit, -limit, limit, outname='DeltaPhi_spherical.svg')
+draw_sel("DeltaPhi", "#Delta#phi", df3d, psel, 161,  -limit, limit, -limit, limit, outname='DeltaPhi_cartesian.svg')
+draw_sel("MinDeltaPhi", "Min. #Delta#phi", df2d, psel, 101,  -limit, limit, -limit, limit)
 # limit = 5e-3
-# draw_sel("DeltaTheta", "#Delta#theta", df2d, psel, 201,  -limit, limit, -limit, limit)
+draw_sel("DeltaTheta", "#Delta#theta", df2d, psel, 161,  -limit, limit, -limit, limit, outname='DeltaTheta_spherical.svg')
+draw_sel("DeltaTheta", "#Delta#theta", df3d, psel, 161,  -limit, limit, -limit, limit, outname='DeltaTheta_cartesian.svg')
+draw_sel("MinDeltaTheta", "Min. #Delta#theta", df2d, psel, 101,  -limit, limit, -limit, limit)
 
 # ptlist = [0.2, 2, 5, 10, 20, 30]
 ptlist = [2, 5, 10, 20, 30, 40, 50]
